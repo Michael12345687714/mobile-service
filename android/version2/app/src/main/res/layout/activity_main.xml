@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="16dp"
+    android:background="@color/background">
+
+    <EditText
+        android:id="@+id/etEmail"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:hint="Correo electrónico"
+        android:textColor="@color/text"
+        android:backgroundTint="@color/primary"
+        android:inputType="textEmailAddress"
+        android:padding="12dp" />
+
+    <EditText
+        android:id="@+id/etPassword"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:hint="Contraseña"
+        android:textColor="@color/text"
+        android:backgroundTint="@color/primary"
+        android:inputType="textPassword"
+        android:padding="12dp"
+        android:layout_marginTop="10dp"/>
+
+    <Button
+        android:id="@+id/btnLogin"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Iniciar sesión"
+        android:textColor="@color/text"
+        android:backgroundTint="@color/primary"
+        android:layout_marginTop="20dp" />
+
+    <Button
+        android:id="@+id/btnRegister"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Registrarse"
+        android:textColor="@color/text"
+        android:backgroundTint="@color/primary"
+        android:layout_marginTop="10dp"/>
+</LinearLayout>
