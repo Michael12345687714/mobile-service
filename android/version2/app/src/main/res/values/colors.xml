@@ -1,0 +1,12 @@
+<resources>
+    <color name="background">#F1FCF5</color>
+    <color name="primary">#2ECC71</color>
+    <color name="text">#072C18</color>
+    <color name="highlight">#8BEAB3</color>
+
+    <!-- Colores que pueden estar faltando -->
+    <color name="purple_200">#BB86FC</color>
+    <color name="purple_700">#3700B3</color>
+    <color name="black">#000000</color>
+    <color name="teal_200">#03DAC5</color>
+</resources>
