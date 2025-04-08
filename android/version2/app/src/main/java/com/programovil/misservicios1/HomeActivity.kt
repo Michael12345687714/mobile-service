@@ -37,29 +37,29 @@ class HomeActivity : AppCompatActivity() {
         if (currentUser != null) {
             val uid = currentUser.uid
 
-            db.collection("users").document(uid).get()
+            // Primero intenta buscar en userClients
+            db.collection("userClients").document(uid).get()
                 .addOnSuccessListener { document ->
                     if (document.exists()) {
-                        val username = document.getString("username") ?: ""
-                        val email = document.getString("email") ?: ""
-                        val userType = document.getString("userType") ?: ""
-
-                        tvUsername.text = "Usuario: $username"
-                        tvEmail.text = "Correo: $email"
-                        tvUserType.text = "Tipo de usuario: $userType"
-
-                        if (userType == "Servicio") {
-                            val serviceType = document.getString("serviceType") ?: "N/A"
-                            val acceptOrders = document.getString("acceptOrders") ?: "false"
-
-                            tvServiceType.text = "Servicio: $serviceType"
-                            tvAcceptOrders.text = "Aceptar pedidos: $acceptOrders"
-
-                            tvServiceType.visibility = View.VISIBLE
-                            tvAcceptOrders.visibility = View.VISIBLE
-                        }
+                        mostrarDatosCliente(document.getString("username"), document.getString("email"))
                     } else {
-                        Toast.makeText(this, "No se encontraron los datos del usuario", Toast.LENGTH_SHORT).show()
+                        // Si no existe, intenta buscar en userServices
+                        db.collection("userServices").document(uid).get()
+                            .addOnSuccessListener { serviceDoc ->
+                                if (serviceDoc.exists()) {
+                                    mostrarDatosServicio(
+                                        serviceDoc.getString("username"),
+                                        serviceDoc.getString("email"),
+                                        serviceDoc.getString("serviceType"),
+                                        serviceDoc.getString("acceptOrders")
+                                    )
+                                } else {
+                                    Toast.makeText(this, "No se encontraron los datos del usuario", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                            .addOnFailureListener {
+                                Toast.makeText(this, "Error al obtener datos: ${it.message}", Toast.LENGTH_SHORT).show()
+                            }
                     }
                 }
                 .addOnFailureListener {
@@ -68,5 +68,23 @@ class HomeActivity : AppCompatActivity() {
         } else {
             Toast.makeText(this, "No hay usuario autenticado", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun mostrarDatosCliente(username: String?, email: String?) {
+        tvUsername.text = "Usuario: ${username ?: "N/A"}"
+        tvEmail.text = "Correo: ${email ?: "N/A"}"
+        tvUserType.text = "Tipo de usuario: Cliente"
+        tvServiceType.visibility = View.GONE
+        tvAcceptOrders.visibility = View.GONE
+    }
+
+    private fun mostrarDatosServicio(username: String?, email: String?, serviceType: String?, acceptOrders: String?) {
+        tvUsername.text = "Usuario: ${username ?: "N/A"}"
+        tvEmail.text = "Correo: ${email ?: "N/A"}"
+        tvUserType.text = "Tipo de usuario: Servicio"
+        tvServiceType.text = "Servicio: ${serviceType ?: "N/A"}"
+        tvAcceptOrders.text = "Aceptar pedidos: ${acceptOrders ?: "false"}"
+        tvServiceType.visibility = View.VISIBLE
+        tvAcceptOrders.visibility = View.VISIBLE
     }
 }
