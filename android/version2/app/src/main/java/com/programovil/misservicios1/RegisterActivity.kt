@@ -90,11 +90,12 @@ class RegisterActivity : AppCompatActivity() {
                         userData["acceptOrders"] = checkBoxAcceptOrders.isChecked.toString()
                     }
 
-                    db.collection("users").document(uid!!)
+                    val collectionName = if (userType == "Cliente") "userClients" else "userServices"
+
+                    db.collection(collectionName).document(uid!!)
                         .set(userData)
                         .addOnSuccessListener {
                             Toast.makeText(this, "Usuario registrado exitosamente", Toast.LENGTH_SHORT).show()
-                            // Para volver al MainActivity
                             val intent = Intent(this, MainActivity::class.java)
                             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
                             startActivity(intent)
