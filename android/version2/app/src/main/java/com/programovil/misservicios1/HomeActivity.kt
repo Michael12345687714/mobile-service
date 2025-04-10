@@ -1,90 +1,93 @@
 package com.programovil.misservicios1
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Bundle
-import android.view.View
-import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MarkerOptions
 
-class HomeActivity : AppCompatActivity() {
+class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
-    private lateinit var tvUsername: TextView
-    private lateinit var tvEmail: TextView
-    private lateinit var tvUserType: TextView
-    private lateinit var tvServiceType: TextView
-    private lateinit var tvAcceptOrders: TextView
+    private lateinit var mMap: GoogleMap
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
 
-    private lateinit var auth: FirebaseAuth
-    private lateinit var db: FirebaseFirestore
+    companion object {
+        private const val LOCATION_PERMISSION_REQUEST_CODE = 1
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_home)
 
-        auth = FirebaseAuth.getInstance()
-        db = FirebaseFirestore.getInstance()
+        // Inicializar cliente de ubicación
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        tvUsername = findViewById(R.id.tvUsername)
-        tvEmail = findViewById(R.id.tvEmail)
-        tvUserType = findViewById(R.id.tvUserType)
-        tvServiceType = findViewById(R.id.tvServiceType)
-        tvAcceptOrders = findViewById(R.id.tvAcceptOrders)
+        // Obtener el fragmento del mapa
+        val mapFragment = supportFragmentManager
+            .findFragmentById(R.id.map) as SupportMapFragment
+        mapFragment.getMapAsync(this)
+    }
 
-        val currentUser = auth.currentUser
+    override fun onMapReady(googleMap: GoogleMap) {
+        mMap = googleMap
+        checkLocationPermission()
+    }
 
-        if (currentUser != null) {
-            val uid = currentUser.uid
-
-            // Primero intenta buscar en userClients
-            db.collection("userClients").document(uid).get()
-                .addOnSuccessListener { document ->
-                    if (document.exists()) {
-                        mostrarDatosCliente(document.getString("username"), document.getString("email"))
-                    } else {
-                        // Si no existe, intenta buscar en userServices
-                        db.collection("userServices").document(uid).get()
-                            .addOnSuccessListener { serviceDoc ->
-                                if (serviceDoc.exists()) {
-                                    mostrarDatosServicio(
-                                        serviceDoc.getString("username"),
-                                        serviceDoc.getString("email"),
-                                        serviceDoc.getString("serviceType"),
-                                        serviceDoc.getString("acceptOrders")
-                                    )
-                                } else {
-                                    Toast.makeText(this, "No se encontraron los datos del usuario", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                            .addOnFailureListener {
-                                Toast.makeText(this, "Error al obtener datos: ${it.message}", Toast.LENGTH_SHORT).show()
-                            }
-                    }
-                }
-                .addOnFailureListener {
-                    Toast.makeText(this, "Error al obtener datos: ${it.message}", Toast.LENGTH_SHORT).show()
-                }
+    private fun checkLocationPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
         } else {
-            Toast.makeText(this, "No hay usuario autenticado", Toast.LENGTH_SHORT).show()
+            enableMyLocation()
         }
     }
 
-    private fun mostrarDatosCliente(username: String?, email: String?) {
-        tvUsername.text = "Usuario: ${username ?: "N/A"}"
-        tvEmail.text = "Correo: ${email ?: "N/A"}"
-        tvUserType.text = "Tipo de usuario: Cliente"
-        tvServiceType.visibility = View.GONE
-        tvAcceptOrders.visibility = View.GONE
+    private fun enableMyLocation() {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            mMap.isMyLocationEnabled = true
+
+            // Obtener última ubicación conocida
+            fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
+                location?.let {
+                    val latLng = LatLng(location.latitude, location.longitude)
+                    mMap.addMarker(MarkerOptions().position(latLng).title("Tu ubicación"))
+                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
+                }
+            }
+        }
     }
 
-    private fun mostrarDatosServicio(username: String?, email: String?, serviceType: String?, acceptOrders: String?) {
-        tvUsername.text = "Usuario: ${username ?: "N/A"}"
-        tvEmail.text = "Correo: ${email ?: "N/A"}"
-        tvUserType.text = "Tipo de usuario: Servicio"
-        tvServiceType.text = "Servicio: ${serviceType ?: "N/A"}"
-        tvAcceptOrders.text = "Aceptar pedidos: ${acceptOrders ?: "false"}"
-        tvServiceType.visibility = View.VISIBLE
-        tvAcceptOrders.visibility = View.VISIBLE
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults) // <- esta línea
+
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
+                enableMyLocation()
+            }
+        }
     }
+
 }

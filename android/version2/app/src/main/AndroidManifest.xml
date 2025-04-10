@@ -15,7 +15,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MisServicios"
         tools:targetApi="31" >
-
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyCARALN5S5FNKPF1WZQQoVPLSzlPk8_tp0" />
         <activity android:name=".HomeActivity" android:exported="false"/>
         <activity android:name=".RegisterActivity" android:exported="false"/>
         <activity
@@ -27,5 +29,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <uses-library android:name="org.apache.http.legacy" android:required="false"/>
     </application>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+
 </manifest>
