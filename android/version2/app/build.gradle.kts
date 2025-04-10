@@ -44,6 +44,14 @@ dependencies {
     implementation(libs.material)
     implementation(libs.firebase.database)
     testImplementation(libs.junit)
+    implementation("com.google.maps.android:maps-compose:2.11.4") // Última versión de Maps Compose
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+    implementation ("androidx.compose.ui:ui:1.5.0") // Actualiza la versión según tu configuración
+    implementation ("androidx.compose.material:material:1.5.0")
+    implementation ("androidx.compose.ui:ui-tooling-preview:1.5.0")
+    implementation ("com.google.firebase:firebase-firestore-ktx")
+    implementation ("com.google.firebase:firebase-auth-ktx")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
