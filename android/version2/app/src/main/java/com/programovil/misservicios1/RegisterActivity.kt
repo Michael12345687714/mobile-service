@@ -41,7 +41,7 @@ class RegisterActivity : AppCompatActivity() {
         checkBoxAcceptOrders = findViewById(R.id.checkAcceptOrders)
         btnRegister = findViewById(R.id.btnRegister)
 
-        // Configuraciones de Spinners
+        // Configurar spinners
         val userTypes = arrayOf("Cliente", "Servicio")
         spinnerUserType.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, userTypes)
 
@@ -56,7 +56,7 @@ class RegisterActivity : AppCompatActivity() {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
-        //Registro con el boton
+        // Registro
         btnRegister.setOnClickListener {
             val username = edtUsername.text.toString().trim()
             val email = edtEmail.text.toString().trim()
@@ -64,8 +64,20 @@ class RegisterActivity : AppCompatActivity() {
             val confirmPassword = edtConfirmPassword.text.toString().trim()
             val userType = spinnerUserType.selectedItem.toString()
 
+            // Validaciones
             if (username.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
                 Toast.makeText(this, "Por favor llena todos los campos", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (username.length < 3 || username.length > 60) {
+                Toast.makeText(this, "El nombre de usuario debe tener entre 3 y 60 caracteres", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val emailPattern = "^[a-zA-Z0-9._%+-]+@(gmail\\.com|hotmail\\.com|est\\.umss\\.edu)$"
+            if (!email.matches(Regex(emailPattern))) {
+                Toast.makeText(this, "El correo debe ser válido y pertenecer a uno de los dominios permitidos", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -74,6 +86,19 @@ class RegisterActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
+            if (password.length < 8 || password.length > 20) {
+                Toast.makeText(this, "La contraseña debe tener entre 8 y 20 caracteres", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            // Validar carácter especial o acento
+            val specialCharsRegex = ".*[\\W_áéíóúüñÁÉÍÓÚÜÑ].*".toRegex()
+            if (!password.matches(specialCharsRegex)) {
+                Toast.makeText(this, "La contraseña debe contener al menos un carácter especial (símbolo o acento)", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            // Intentar crear el usuario en Firebase
             auth.createUserWithEmailAndPassword(email, password)
                 .addOnSuccessListener { authResult ->
                     val uid = authResult.user?.uid
@@ -106,7 +131,11 @@ class RegisterActivity : AppCompatActivity() {
                         }
                 }
                 .addOnFailureListener {
-                    Toast.makeText(this, "Error al registrar: ${it.message}", Toast.LENGTH_SHORT).show()
+                    if (it.message?.contains("The email address is already in use") == true) {
+                        Toast.makeText(this, "Error: El correo ya se encuentra registrado", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this, "Error al registrar: ${it.message}", Toast.LENGTH_SHORT).show()
+                    }
                 }
         }
     }
