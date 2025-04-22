@@ -52,6 +52,7 @@ dependencies {
     implementation ("androidx.compose.ui:ui-tooling-preview:1.5.0")
     implementation ("com.google.firebase:firebase-firestore-ktx")
     implementation ("com.google.firebase:firebase-auth-ktx")
+    implementation ("com.google.android.gms:play-services-auth:21.0.0")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
