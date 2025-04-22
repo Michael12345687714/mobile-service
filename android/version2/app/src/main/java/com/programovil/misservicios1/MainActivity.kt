@@ -2,6 +2,7 @@ package com.programovil.misservicios1
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
@@ -33,7 +34,14 @@ class MainActivity : AppCompatActivity() {
         val loginButton = findViewById<Button>(R.id.btnLogin)
         val registerButton = findViewById<Button>(R.id.btnRegister)
         val googleSignInButton = findViewById<com.google.android.gms.common.SignInButton>(R.id.googleSignInButton)
-
+        //Cambiar el texto del boton
+        for (i in 0 until googleSignInButton.childCount) {
+            val view = googleSignInButton.getChildAt(i)
+            if (view is android.widget.TextView) {
+                view.text = "Acceder con Google"
+                break
+            }
+        }
         // Configurar Google Sign-In
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.default_web_client_id)) // Asegúrate de tener este string en strings.xml
@@ -94,22 +102,35 @@ class MainActivity : AppCompatActivity() {
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
                     val user = auth.currentUser
-                    val uid = user?.uid ?: return@addOnCompleteListener
-
-                    // Guardar usuario en Firestore si es nuevo
+                    val email = user?.email ?: return@addOnCompleteListener
                     val db = FirebaseFirestore.getInstance()
-                    val userDoc = db.collection("users").document(uid)
-                    userDoc.get().addOnSuccessListener { document ->
-                        if (!document.exists() || !document.contains("userType")) {
-                            // Redirigir a completar perfil
-                            val intent = Intent(this, CompleteProfileActivity::class.java)
-                            startActivity(intent)
-                            finish()
-                        } else {
-                            // Ya tiene perfil completo
+
+                    // Verifica en ambas colecciones: userClients y userServices
+                    val userClientsQuery = db.collection("userClients").whereEqualTo("email", email).get()
+                    val userServicesQuery = db.collection("userServices").whereEqualTo("email", email).get()
+
+                    userClientsQuery.addOnSuccessListener { clients ->
+                        if (!clients.isEmpty) {
+                            Log.d("AUTH", "Usuario encontrado en userClients. Redirigiendo a HomeActivity.")
                             startActivity(Intent(this, HomeActivity::class.java))
                             finish()
+                        } else {
+                            userServicesQuery.addOnSuccessListener { services ->
+                                if (!services.isEmpty) {
+                                    Log.d("AUTH", "Usuario encontrado en userServices. Redirigiendo a HomeActivity.")
+                                    startActivity(Intent(this, HomeActivity::class.java))
+                                    finish()
+                                } else {
+                                    Log.d("AUTH", "Correo no registrado. Redirigiendo a CompleteProfileActivity.")
+                                    startActivity(Intent(this, CompleteProfileActivity::class.java))
+                                    finish()
+                                }
+                            }.addOnFailureListener {
+                                Toast.makeText(this, "Error al verificar userServices", Toast.LENGTH_SHORT).show()
+                            }
                         }
+                    }.addOnFailureListener {
+                        Toast.makeText(this, "Error al verificar userClients", Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     Toast.makeText(this, "Fallo en la autenticación con Google", Toast.LENGTH_SHORT).show()
