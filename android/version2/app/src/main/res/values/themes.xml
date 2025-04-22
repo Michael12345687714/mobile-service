@@ -5,7 +5,7 @@
         <item name="colorOnPrimary">@color/text</item>
         <item name="android:colorBackground">@color/background</item>
         <item name="android:textColor">@color/text</item>
-        <item name="android:buttonStyle">@style/MyButtonStyle</item>
+
 
         <item name="android:statusBarColor">@color/primary</item>
         <item name="android:navigationBarColor">@color/primary</item>
