@@ -21,6 +21,13 @@ import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import android.widget.ImageView
+import android.widget.Button
+import androidx.drawerlayout.widget.DrawerLayout
+import androidx.core.view.GravityCompat
+
+
+import android.widget.LinearLayout
 
 class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -31,6 +38,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private var currentUserMarker: Marker? = null
+    private var isSelected = false
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
@@ -39,6 +47,59 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_home)
+
+        // Referencias a los contenedores de servicios
+        val waterContainer = findViewById<LinearLayout>(R.id.waterContainer)
+        val gasContainer = findViewById<LinearLayout>(R.id.gasContainer)
+        val garbageContainer = findViewById<LinearLayout>(R.id.garbageContainer)
+
+        val filterButton = findViewById<ImageView>(R.id.filterButton)
+        val requestButton = findViewById<Button>(R.id.requestButton)
+
+        // Variable para almacenar el servicio seleccionado actualmente
+        var selectedService: LinearLayout? = null
+
+        // Función para manejar la selección de servicios
+        fun selectService(container: LinearLayout) {
+            // Deseleccionar el anterior
+            selectedService?.isSelected = false
+
+            // Seleccionar el nuevo
+            container.isSelected = true
+            selectedService = container
+
+            // Mostrar un mensaje según el servicio seleccionado
+            when (container.id) {
+                R.id.waterContainer -> Toast.makeText(this, "Servicio de agua seleccionado", Toast.LENGTH_SHORT).show()
+                R.id.gasContainer -> Toast.makeText(this, "Servicio de gas seleccionado", Toast.LENGTH_SHORT).show()
+                R.id.garbageContainer -> Toast.makeText(this, "Servicio de basura seleccionado", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // Configurar los listeners de clic
+        waterContainer.setOnClickListener {
+            selectService(waterContainer)
+        }
+
+        gasContainer.setOnClickListener {
+            selectService(gasContainer)
+        }
+
+        garbageContainer.setOnClickListener {
+            selectService(garbageContainer)
+        }
+
+        filterButton.setOnClickListener {
+            Toast.makeText(this, "Filtrar servicios", Toast.LENGTH_SHORT).show()
+        }
+
+        requestButton.setOnClickListener {
+            if (selectedService == null) {
+                Toast.makeText(this, "Por favor seleccione un servicio", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Solicitar servicio", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         auth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
