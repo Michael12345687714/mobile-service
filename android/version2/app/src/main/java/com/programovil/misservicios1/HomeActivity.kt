@@ -174,4 +174,14 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             fusedLocationClient.removeLocationUpdates(locationCallback)
         }
     }
+
+    fun setUserOfflineAndStopLocation() {
+        val uid = auth.currentUser?.uid
+        if (uid != null) {
+            db.collection("locations").document(uid).update("isOnline", false)
+        }
+        if (::locationCallback.isInitialized) {
+            fusedLocationClient.removeLocationUpdates(locationCallback)
+        }
+    }
 }

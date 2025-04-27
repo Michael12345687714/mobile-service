@@ -25,16 +25,25 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
 
         auth = FirebaseAuth.getInstance()
+
+        // Verificar si ya hay un usuario autenticado
+        if (auth.currentUser != null) {
+            startActivity(Intent(this, HomeActivity::class.java))
+            finish()
+            return
+        }
+
+        setContentView(R.layout.activity_main)
 
         val emailField = findViewById<EditText>(R.id.etEmail)
         val passwordField = findViewById<EditText>(R.id.etPassword)
         val loginButton = findViewById<Button>(R.id.btnLogin)
         val registerButton = findViewById<Button>(R.id.btnRegister)
         val googleSignInButton = findViewById<com.google.android.gms.common.SignInButton>(R.id.googleSignInButton)
-        //Cambiar el texto del boton
+
+        // Cambiar el texto del botón
         for (i in 0 until googleSignInButton.childCount) {
             val view = googleSignInButton.getChildAt(i)
             if (view is android.widget.TextView) {
@@ -42,9 +51,10 @@ class MainActivity : AppCompatActivity() {
                 break
             }
         }
+
         // Configurar Google Sign-In
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(getString(R.string.default_web_client_id)) // Asegúrate de tener este string en strings.xml
+            .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
 
@@ -105,19 +115,20 @@ class MainActivity : AppCompatActivity() {
                     val email = user?.email ?: return@addOnCompleteListener
                     val db = FirebaseFirestore.getInstance()
 
-                    // Verifica en ambas colecciones: userClients y userServices
                     val userClientsQuery = db.collection("userClients").whereEqualTo("email", email).get()
                     val userServicesQuery = db.collection("userServices").whereEqualTo("email", email).get()
 
                     userClientsQuery.addOnSuccessListener { clients ->
                         if (!clients.isEmpty) {
                             Log.d("AUTH", "Usuario encontrado en userClients. Redirigiendo a HomeActivity.")
+                            Toast.makeText(this, "Sesión iniciada correctamente", Toast.LENGTH_SHORT).show()
                             startActivity(Intent(this, HomeActivity::class.java))
                             finish()
                         } else {
                             userServicesQuery.addOnSuccessListener { services ->
                                 if (!services.isEmpty) {
                                     Log.d("AUTH", "Usuario encontrado en userServices. Redirigiendo a HomeActivity.")
+                                    Toast.makeText(this, "Sesión iniciada correctamente", Toast.LENGTH_SHORT).show()
                                     startActivity(Intent(this, HomeActivity::class.java))
                                     finish()
                                 } else {
@@ -138,4 +149,3 @@ class MainActivity : AppCompatActivity() {
             }
     }
 }
-

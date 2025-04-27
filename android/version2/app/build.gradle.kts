@@ -47,22 +47,24 @@ dependencies {
     implementation("com.google.maps.android:maps-compose:2.11.4") // Última versión de Maps Compose
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("com.google.android.gms:play-services-location:21.0.1")
-    implementation ("androidx.compose.ui:ui:1.5.0") // Actualiza la versión según tu configuración
-    implementation ("androidx.compose.material:material:1.5.0")
-    implementation ("androidx.compose.ui:ui-tooling-preview:1.5.0")
-    implementation ("com.google.firebase:firebase-firestore-ktx")
-    implementation ("com.google.firebase:firebase-auth-ktx")
-    implementation ("com.google.android.gms:play-services-auth:21.0.0")
+    implementation("androidx.compose.ui:ui:1.5.0") // Actualiza la versión según tu configuración
+    implementation("androidx.compose.material:material:1.5.0")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.5.0")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
 
-
     // Declare the dependencies for the desired Firebase products without specifying versions
-    // For example, declare the dependencies for Firebase Authentication and Cloud Firestore
-    implementation (libs.firebase.auth)
-    implementation (libs.firebase.firestore)
-    implementation (libs.firebase.storage)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.storage)
+
+    // Glide para carga de imágenes
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 }
