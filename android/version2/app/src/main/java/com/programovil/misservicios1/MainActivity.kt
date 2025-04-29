@@ -9,12 +9,14 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import android.widget.TextView
+import androidx.core.content.ContextCompat
+
 
 
 class MainActivity : AppCompatActivity() {
@@ -68,15 +70,31 @@ class MainActivity : AppCompatActivity() {
             if (email.isNotEmpty() && password.isNotEmpty()) {
                 auth.signInWithEmailAndPassword(email, password)
                     .addOnSuccessListener {
-                        Toast.makeText(this, "Inicio de sesión exitoso", Toast.LENGTH_SHORT).show()
+                        val toast = Toast.makeText(this, "Inicio de sesión exitoso", Toast.LENGTH_SHORT)
+                        val icon = ContextCompat.getDrawable(this, R.drawable.imagen1) // imagen1 para éxito
+                        val textView = toast.view?.findViewById<TextView>(android.R.id.message)
+                        textView?.setCompoundDrawablesWithIntrinsicBounds(icon, null, null, null)
+                        textView?.compoundDrawablePadding = 16
+                        toast.show()
+
                         startActivity(Intent(this, HomeActivity::class.java))
                         finish()
                     }
                     .addOnFailureListener {
-                        Toast.makeText(this, "Error al iniciar sesión: ${it.message}", Toast.LENGTH_SHORT).show()
+                        val toast = Toast.makeText(this, "Error al iniciar sesión: ${it.message}", Toast.LENGTH_SHORT)
+                        val icon = ContextCompat.getDrawable(this, R.drawable.imagen2) // imagen2 para error
+                        val textView = toast.view?.findViewById<TextView>(android.R.id.message)
+                        textView?.setCompoundDrawablesWithIntrinsicBounds(icon, null, null, null)
+                        textView?.compoundDrawablePadding = 16
+                        toast.show()
                     }
             } else {
-                Toast.makeText(this, "Por favor, completa todos los campos", Toast.LENGTH_SHORT).show()
+                val toast = Toast.makeText(this, "Por favor, completa todos los campos", Toast.LENGTH_SHORT)
+                val icon = ContextCompat.getDrawable(this, R.drawable.imagen2) // imagen2 también para campos vacíos
+                val textView = toast.view?.findViewById<TextView>(android.R.id.message)
+                textView?.setCompoundDrawablesWithIntrinsicBounds(icon, null, null, null)
+                textView?.compoundDrawablePadding = 16
+                toast.show()
             }
         }
 

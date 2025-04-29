@@ -76,6 +76,18 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
     }
 
+    fun setUserOfflineAndStopLocation() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        if (uid != null) {
+            FirebaseFirestore.getInstance().collection("locations").document(uid)
+                .update("isOnline", false)
+        }
+
+        if (::locationCallback.isInitialized) {
+            fusedLocationClient.removeLocationUpdates(locationCallback)
+        }
+    }
+
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
         checkLocationPermission()
