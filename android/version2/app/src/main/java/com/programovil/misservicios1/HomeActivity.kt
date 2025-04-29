@@ -79,7 +79,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         val waterContainer = findViewById<LinearLayout>(R.id.waterContainer)
         val gasContainer = findViewById<LinearLayout>(R.id.gasContainer)
         val garbageContainer = findViewById<LinearLayout>(R.id.garbageContainer)
-       // val filterButton = findViewById<ImageView>(R.id.filterButton)
+        // val filterButton = findViewById<ImageView>(R.id.filterButton)
         val requestButton = findViewById<Button>(R.id.requestButton)
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawerLayout)
         val menuButton = findViewById<View>(R.id.menuButton)
@@ -373,6 +373,16 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onDestroy() {
         super.onDestroy()
         auth.currentUser?.uid?.let { uid ->
+            db.collection("locations").document(uid).update("isOnline", false)
+        }
+        if (::locationCallback.isInitialized) {
+            fusedLocationClient.removeLocationUpdates(locationCallback)
+        }
+    }
+
+    fun setUserOfflineAndStopLocation() {
+        val uid = auth.currentUser?.uid
+        if (uid != null) {
             db.collection("locations").document(uid).update("isOnline", false)
         }
         if (::locationCallback.isInitialized) {
