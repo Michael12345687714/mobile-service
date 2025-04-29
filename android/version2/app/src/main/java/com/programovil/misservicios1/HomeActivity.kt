@@ -2,32 +2,35 @@ package com.programovil.misservicios1
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.location.Location
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.os.Bundle
-import android.view.Gravity
 import android.view.View
-import android.widget.TextView
+import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.android.gms.location.*
+import androidx.core.view.GravityCompat
+import androidx.drawerlayout.widget.DrawerLayout
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptor
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import android.widget.ImageView
-import android.widget.Button
-import androidx.drawerlayout.widget.DrawerLayout
-import androidx.core.view.GravityCompat
 
-
-import android.widget.LinearLayout
 
 class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -39,92 +42,131 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var locationCallback: LocationCallback
     private var currentUserMarker: Marker? = null
     private var isSelected = false
+    private var currentUserType: String? = null
+
+    private var currentServiceType: String? = null
+    private var isFirstLocationUpdate = true
+
+    // Variable para almacenar el tipo de servicio filtrado
+    private var filteredServiceType: String? = null
+
+    // Variable para almacenar el contenedor actualmente seleccionado
+    private var selectedServiceContainer: LinearLayout? = null
+
+    private val serviceMarkers = mutableMapOf<String, Marker>()
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
+        private const val USER_ICON_SIZE_DP = 50  // Tamaño para el icono del usuario
+        private const val PROVIDER_ICON_SIZE_DP = 40  // Tamaño para los iconos de proveedores
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_home)
 
-        // Referencias a los contenedores de servicios
+        // Inicialización de vistas y listeners
+        initViews()
+        auth = FirebaseAuth.getInstance()
+        db = FirebaseFirestore.getInstance()
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
+        mapFragment.getMapAsync(this)
+    }
+
+    private fun initViews() {
         val waterContainer = findViewById<LinearLayout>(R.id.waterContainer)
         val gasContainer = findViewById<LinearLayout>(R.id.gasContainer)
         val garbageContainer = findViewById<LinearLayout>(R.id.garbageContainer)
-
-        val filterButton = findViewById<ImageView>(R.id.filterButton)
+       // val filterButton = findViewById<ImageView>(R.id.filterButton)
         val requestButton = findViewById<Button>(R.id.requestButton)
+        val drawerLayout = findViewById<DrawerLayout>(R.id.drawerLayout)
+        val menuButton = findViewById<View>(R.id.menuButton)
 
-        // Variable para almacenar el servicio seleccionado actualmente
-        var selectedService: LinearLayout? = null
-
-        // Función para manejar la selección de servicios
         fun selectService(container: LinearLayout) {
-            // Deseleccionar el anterior
-            selectedService?.isSelected = false
+            // Si ya está seleccionado el mismo contenedor, lo deseleccionamos
+            if (selectedServiceContainer == container) {
+                container.isSelected = false
+                selectedServiceContainer = null
+                filteredServiceType = null
+                Toast.makeText(this, "Mostrando todos los servicios", Toast.LENGTH_SHORT).show()
+            } else {
+                // Deseleccionamos el contenedor anterior si existe
+                selectedServiceContainer?.isSelected = false
 
-            // Seleccionar el nuevo
-            container.isSelected = true
-            selectedService = container
+                // Seleccionamos el nuevo contenedor
+                container.isSelected = true
+                selectedServiceContainer = container
 
-            // Mostrar un mensaje según el servicio seleccionado
-            when (container.id) {
-                R.id.waterContainer -> Toast.makeText(this, "Servicio de agua seleccionado", Toast.LENGTH_SHORT).show()
-                R.id.gasContainer -> Toast.makeText(this, "Servicio de gas seleccionado", Toast.LENGTH_SHORT).show()
-                R.id.garbageContainer -> Toast.makeText(this, "Servicio de basura seleccionado", Toast.LENGTH_SHORT).show()
+                // Actualizar el tipo de servicio filtrado
+                filteredServiceType = when (container.id) {
+                    R.id.waterContainer -> {
+                        Toast.makeText(this, "Servicio de agua seleccionado", Toast.LENGTH_SHORT).show()
+                        "Agua"
+                    }
+                    R.id.gasContainer -> {
+                        Toast.makeText(this, "Servicio de gas seleccionado", Toast.LENGTH_SHORT).show()
+                        "GLP"
+                    }
+                    R.id.garbageContainer -> {
+                        Toast.makeText(this, "Servicio de basura seleccionado", Toast.LENGTH_SHORT).show()
+                        "Carro de basura"
+                    }
+                    else -> null
+                }
+            }
+
+            // Actualizar el mapa con el filtro aplicado
+            if (currentUserType == "Cliente" && ::mMap.isInitialized) {
+                refreshMap()
             }
         }
 
-        // Configurar los listeners de clic
-        waterContainer.setOnClickListener {
-            selectService(waterContainer)
-        }
+        waterContainer.setOnClickListener { selectService(waterContainer) }
+        gasContainer.setOnClickListener { selectService(gasContainer) }
+        garbageContainer.setOnClickListener { selectService(garbageContainer) }
 
-        gasContainer.setOnClickListener {
-            selectService(gasContainer)
-        }
-
-        garbageContainer.setOnClickListener {
-            selectService(garbageContainer)
-        }
-
-        filterButton.setOnClickListener {
-            Toast.makeText(this, "Filtrar servicios", Toast.LENGTH_SHORT).show()
-        }
 
         requestButton.setOnClickListener {
-            if (selectedService == null) {
+            if (selectedServiceContainer == null) {
                 Toast.makeText(this, "Por favor seleccione un servicio", Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(this, "Solicitar servicio", Toast.LENGTH_SHORT).show()
             }
         }
 
-        auth = FirebaseAuth.getInstance()
-        db = FirebaseFirestore.getInstance()
-
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
-        mapFragment.getMapAsync(this)
-
-        val drawerLayout = findViewById<androidx.drawerlayout.widget.DrawerLayout>(R.id.drawerLayout)
-        val menuButton = findViewById<View>(R.id.menuButton)
-
-        // Cargar fragmento del drawer
         supportFragmentManager.beginTransaction()
             .replace(R.id.drawerFragmentContainer, UserDrawerFragment())
             .commit()
 
         menuButton.setOnClickListener {
-            drawerLayout.openDrawer(Gravity.START)
+            drawerLayout.openDrawer(GravityCompat.START)
         }
+    }
+
+
+    // Método para refrescar el mapa aplicando los filtros actuales
+    private fun refreshMap() {
+        // Limpiar el mapa
+        mMap.clear()
+
+        // Si existe la ubicación actual, añadir el marcador del usuario actual
+        currentUserMarker?.position?.let { position ->
+            currentUserMarker = mMap.addMarker(
+                MarkerOptions()
+                    .position(position)
+                    .title("Tu ubicación")
+            )
+        }
+
+        // Volver a cargar los servicios con el filtro aplicado
+        listenToServiceProviders()
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
         checkLocationPermission()
-        listenToOnlineUsers()
     }
 
     private fun checkLocationPermission() {
@@ -140,49 +182,110 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+
+
     private fun enableMyLocation() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             == PackageManager.PERMISSION_GRANTED) {
 
-            mMap.isMyLocationEnabled = true
+            mMap.isMyLocationEnabled = false // Desactivamos el botón azul predeterminado de Google Maps
 
-            val locationRequest = LocationRequest.create().apply {
-                interval = 5000
-                fastestInterval = 3000
-                priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-            }
+            val uid = auth.currentUser?.uid
 
-            locationCallback = object : LocationCallback() {
-                override fun onLocationResult(locationResult: LocationResult) {
-                    val location = locationResult.lastLocation ?: return
-                    val latLng = LatLng(location.latitude, location.longitude)
-
-                    if (currentUserMarker == null) {
-                        currentUserMarker = mMap.addMarker(
-                            MarkerOptions().position(latLng).title("Tu ubicación")
-                        )
-                        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
-                    } else {
-                        currentUserMarker?.position = latLng
+            uid?.let {
+                // Primero buscar en userClients
+                db.collection("userClients").document(it).get()
+                    .addOnSuccessListener { clientDoc ->
+                        if (clientDoc.exists()) {
+                            // Es Cliente
+                            currentUserType = clientDoc.getString("userType")
+                            iniciarActualizacionUbicacion()
+                        } else {
+                            // No está en userClients, buscar en userServices
+                            db.collection("userServices").document(it).get()
+                                .addOnSuccessListener { serviceDoc ->
+                                    if (serviceDoc.exists()) {
+                                        currentUserType = serviceDoc.getString("userType")
+                                        // Si es servicio, necesitamos obtener el tipo de servicio para mostrar el ícono correcto
+                                        currentServiceType = serviceDoc.getString("serviceType")
+                                        iniciarActualizacionUbicacion()
+                                    }
+                                }
+                        }
                     }
-
-                    val uid = auth.currentUser?.uid
-                    val userLocation = hashMapOf(
-                        "latitude" to location.latitude,
-                        "longitude" to location.longitude,
-                        "isOnline" to true
-                    )
-                    if (uid != null) {
-                        db.collection("locations").document(uid).set(userLocation)
-                    }
-                }
             }
-
-            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, mainLooper)
         }
     }
 
-    private fun listenToOnlineUsers() {
+    // Esta es una función separada para iniciar la ubicación una vez que ya sabemos el tipo de usuario
+    private fun iniciarActualizacionUbicacion() {
+        val locationRequest = LocationRequest.create().apply {
+            interval = 5000
+            fastestInterval = 3000
+            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        }
+
+        locationCallback = object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                val location = locationResult.lastLocation ?: return
+                val latLng = LatLng(location.latitude, location.longitude)
+
+                // Guardar la ubicación del usuario en Firebase independientemente del tipo
+                val uid = auth.currentUser?.uid
+                val userLocation = hashMapOf(
+                    "latitude" to location.latitude,
+                    "longitude" to location.longitude,
+                    "isOnline" to true
+                )
+                uid?.let { db.collection("locations").document(it).set(userLocation) }
+
+                // Limpiar mapa y añadir marcador según el tipo de usuario
+                mMap.clear()
+
+                if (currentUserType == "Cliente") {
+                    // Si es Cliente, mostrar con pin rojo predeterminado
+                    currentUserMarker = mMap.addMarker(
+                        MarkerOptions()
+                            .position(latLng)
+                            .title("Tu ubicación")
+                    )
+                    // Los clientes pueden ver a los proveedores de servicio
+                    listenToServiceProviders()
+                } else {
+                    // Si es Servicio, mostrar con ícono personalizado según su tipo
+                    val serviceIcon = getServiceIcon(currentServiceType)
+                    currentUserMarker = mMap.addMarker(
+                        MarkerOptions()
+                            .position(latLng)
+                            .title("Tu ubicación")
+                            .icon(serviceIcon)
+                    )
+                    // Los proveedores de servicio NO ven a otros usuarios
+                }
+
+                // Mover la cámara a la ubicación actual (solo si es la primera vez)
+                if (isFirstLocationUpdate) {
+                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
+                    isFirstLocationUpdate = false
+                }
+            }
+        }
+
+        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, mainLooper)
+    }
+
+    // Función para obtener el ícono según el tipo de servicio
+    private fun getServiceIcon(serviceType: String?): BitmapDescriptor {
+        return when (serviceType) {
+            "Agua" -> getBitmapDescriptorFromVector(R.drawable.ic_water_truck, PROVIDER_ICON_SIZE_DP, PROVIDER_ICON_SIZE_DP)
+            "GLP" -> getBitmapDescriptorFromVector(R.drawable.ic_gas_truck, PROVIDER_ICON_SIZE_DP, PROVIDER_ICON_SIZE_DP)
+            "Carro de basura" -> getBitmapDescriptorFromVector(R.drawable.ic_garbage_truck, PROVIDER_ICON_SIZE_DP, PROVIDER_ICON_SIZE_DP)
+            else -> getBitmapDescriptorFromVector(R.drawable.ic_filter, PROVIDER_ICON_SIZE_DP, PROVIDER_ICON_SIZE_DP)
+        }
+    }
+
+    // Solo los clientes escuchan las ubicaciones de los proveedores de servicio
+    private fun listenToServiceProviders() {
         db.collection("locations")
             .whereEqualTo("isOnline", true)
             .addSnapshotListener { snapshots, e ->
@@ -191,27 +294,69 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                     return@addSnapshotListener
                 }
 
-                mMap.clear()
-
                 snapshots?.forEach { doc ->
-                    val lat = doc.getDouble("latitude") ?: return@forEach
-                    val lng = doc.getDouble("longitude") ?: return@forEach
                     val userId = doc.id
+                    if (userId == auth.currentUser?.uid) return@forEach // Saltamos nuestro propio documento
 
-                    // Consultamos si este usuario está en la colección de servicios
+                    // Solo mostrar usuarios de tipo Servicio
                     db.collection("userServices").document(userId).get()
                         .addOnSuccessListener { serviceDoc ->
                             if (serviceDoc.exists()) {
-                                val marker = MarkerOptions()
-                                    .position(LatLng(lat, lng))
-                                    .title("Servicio: ${serviceDoc.getString("username") ?: userId}")
-                                mMap.addMarker(marker)
+                                val userType = serviceDoc.getString("userType")
+                                if (userType == "Servicio") {
+                                    val serviceType = serviceDoc.getString("serviceType") ?: "Desconocido"
+
+                                    // Aplicar el filtro - solo mostrar si no hay filtro o si coincide con el filtro
+                                    if (filteredServiceType == null || filteredServiceType == serviceType) {
+                                        val username = serviceDoc.getString("username") ?: "Servicio"
+                                        val lat = doc.getDouble("latitude") ?: return@addOnSuccessListener
+                                        val lng = doc.getDouble("longitude") ?: return@addOnSuccessListener
+
+                                        val icon = when (serviceType) {
+                                            "Agua" -> getBitmapDescriptorFromVector(R.drawable.ic_water_truck, PROVIDER_ICON_SIZE_DP, PROVIDER_ICON_SIZE_DP)
+                                            "GLP" -> getBitmapDescriptorFromVector(R.drawable.ic_gas_truck, PROVIDER_ICON_SIZE_DP, PROVIDER_ICON_SIZE_DP)
+                                            "Carro de basura" -> getBitmapDescriptorFromVector(R.drawable.ic_garbage_truck, PROVIDER_ICON_SIZE_DP, PROVIDER_ICON_SIZE_DP)
+                                            else -> getBitmapDescriptorFromVector(R.drawable.ic_filter, PROVIDER_ICON_SIZE_DP, PROVIDER_ICON_SIZE_DP)
+                                        }
+
+                                        mMap.addMarker(
+                                            MarkerOptions()
+                                                .position(LatLng(lat, lng))
+                                                .title("Servicio: $username ($serviceType)")
+                                                .icon(icon)
+                                        )
+                                    }
+                                }
                             }
                         }
                 }
             }
     }
 
+    private fun getBitmapDescriptorFromVector(
+        vectorResId: Int,
+        widthDp: Int,
+        heightDp: Int
+    ): BitmapDescriptor {
+        return try {
+            val vectorDrawable = ContextCompat.getDrawable(this, vectorResId) ?: return BitmapDescriptorFactory.defaultMarker()
+
+            // Convertir dp a píxeles
+            val widthPx = (widthDp * resources.displayMetrics.density).toInt()
+            val heightPx = (heightDp * resources.displayMetrics.density).toInt()
+
+            val bitmap = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+
+            vectorDrawable.setBounds(0, 0, canvas.width, canvas.height)
+            vectorDrawable.draw(canvas)
+
+            BitmapDescriptorFactory.fromBitmap(bitmap)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            BitmapDescriptorFactory.defaultMarker()
+        }
+    }
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -227,8 +372,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onDestroy() {
         super.onDestroy()
-        val uid = auth.currentUser?.uid
-        if (uid != null) {
+        auth.currentUser?.uid?.let { uid ->
             db.collection("locations").document(uid).update("isOnline", false)
         }
         if (::locationCallback.isInitialized) {
