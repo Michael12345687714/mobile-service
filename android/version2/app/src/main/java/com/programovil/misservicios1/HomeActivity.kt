@@ -30,6 +30,7 @@ import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import android.widget.SearchView
 
 
 class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
@@ -53,7 +54,8 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     // Variable para almacenar el contenedor actualmente seleccionado
     private var selectedServiceContainer: LinearLayout? = null
 
-    private val serviceMarkers = mutableMapOf<String, Marker>()
+    // Lista de marcadores y sus nombres
+    private val allServiceMarkers = mutableListOf<Pair<Marker, String>>()
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
@@ -67,6 +69,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
         // Inicialización de vistas y listeners
         initViews()
+
         auth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
@@ -143,13 +146,100 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         menuButton.setOnClickListener {
             drawerLayout.openDrawer(GravityCompat.START)
         }
+
+        val searchView = findViewById<SearchView>(R.id.searchView)
+
+        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                if (!query.isNullOrEmpty()) {
+                    searchServiceProvider(query)
+                }
+                return true
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                filterServices(newText.orEmpty())
+                return true
+            }
+        })
     }
 
+    // Método para buscar un proveedor de servicio por su username
+    private fun searchServiceProvider(username: String) {
+        // Buscar el proveedor de servicio por username
+        db.collection("userServices")
+            .whereEqualTo("username", username)
+            .get()
+            .addOnSuccessListener { documents ->
+                if (documents.isEmpty) {
+                    Toast.makeText(this, "No se encontró ningún proveedor con ese nombre", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
+                }
+
+                val serviceDoc = documents.documents[0]
+                val uid = serviceDoc.getString("uid")
+
+                if (uid != null) {
+                    // Obtener la ubicación del proveedor
+                    db.collection("locations").document(uid).get()
+                        .addOnSuccessListener { locationDoc ->
+                            if (locationDoc.exists()) {
+                                val lat = locationDoc.getDouble("latitude")
+                                val lng = locationDoc.getDouble("longitude")
+
+                                if (lat != null && lng != null) {
+                                    // Centrar el mapa en la ubicación del proveedor
+                                    val providerLocation = LatLng(lat, lng)
+                                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(providerLocation, 17f))
+
+                                    // Destacar el marcador (opcional)
+                                    allServiceMarkers.forEach { (marker, name) ->
+                                        if (name == username) {
+                                            marker.showInfoWindow() // Muestra el info window del marcador
+                                        }
+                                    }
+
+                                    Toast.makeText(this, "Proveedor encontrado: $username", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(this, "El proveedor no tiene ubicación disponible", Toast.LENGTH_SHORT).show()
+                                }
+                            } else {
+                                Toast.makeText(this, "El proveedor no está en línea actualmente", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        .addOnFailureListener {
+                            Toast.makeText(this, "Error al obtener la ubicación del proveedor", Toast.LENGTH_SHORT).show()
+                        }
+                }
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Error en la búsqueda", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    // Método para filtrar los servicios mostrados en el mapa
+    private fun filterServices(query: String) {
+        val lowerCaseQuery = query.lowercase()
+
+        allServiceMarkers.forEach { (marker, serviceName) ->
+            marker.isVisible = serviceName.lowercase().contains(lowerCaseQuery)
+        }
+
+        // Si no hay ningún marcador visible, mostramos un toast
+        if (allServiceMarkers.none { it.first.isVisible }) {
+            Toast.makeText(this, "No se encontraron resultados", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     // Método para refrescar el mapa aplicando los filtros actuales
     private fun refreshMap() {
-        // Limpiar el mapa
-        mMap.clear()
+        // Eliminamos los marcadores pero mantenemos la configuración del mapa
+        if (currentUserMarker != null) {
+            currentUserMarker?.remove()
+        }
+
+        allServiceMarkers.forEach { (marker, _) -> marker.remove() }
+        allServiceMarkers.clear()
 
         // Si existe la ubicación actual, añadir el marcador del usuario actual
         currentUserMarker?.position?.let { position ->
@@ -182,13 +272,11 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
-
-
     private fun enableMyLocation() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             == PackageManager.PERMISSION_GRANTED) {
 
-            mMap.isMyLocationEnabled = false // Desactivamos el botón azul predeterminado de Google Maps
+            mMap.isMyLocationEnabled = true // Habilitamos el botón azul predeterminado de Google Maps
 
             val uid = auth.currentUser?.uid
 
@@ -239,8 +327,11 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                 )
                 uid?.let { db.collection("locations").document(it).set(userLocation) }
 
-                // Limpiar mapa y añadir marcador según el tipo de usuario
-                mMap.clear()
+                // Añadir marcador según el tipo de usuario (sin limpiar el mapa para mantener el indicador de ubicación)
+                // Eliminamos los marcadores anteriores pero mantenemos la configuración del mapa
+                if (currentUserMarker != null) {
+                    currentUserMarker?.remove()
+                }
 
                 if (currentUserType == "Cliente") {
                     // Si es Cliente, mostrar con pin rojo predeterminado
@@ -294,6 +385,10 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                     return@addSnapshotListener
                 }
 
+                // Eliminamos los marcadores de servicio anteriores pero mantenemos el indicador de ubicación
+                allServiceMarkers.forEach { (marker, _) -> marker.remove() }
+                allServiceMarkers.clear() // Limpiar antes de agregar
+
                 snapshots?.forEach { doc ->
                     val userId = doc.id
                     if (userId == auth.currentUser?.uid) return@forEach // Saltamos nuestro propio documento
@@ -319,12 +414,16 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                                             else -> getBitmapDescriptorFromVector(R.drawable.ic_filter, PROVIDER_ICON_SIZE_DP, PROVIDER_ICON_SIZE_DP)
                                         }
 
-                                        mMap.addMarker(
+                                        val marker = mMap.addMarker(
                                             MarkerOptions()
                                                 .position(LatLng(lat, lng))
                                                 .title("Servicio: $username ($serviceType)")
                                                 .icon(icon)
                                         )
+
+                                        if (marker != null) {
+                                            allServiceMarkers.add(Pair(marker, username))
+                                        }
                                     }
                                 }
                             }
