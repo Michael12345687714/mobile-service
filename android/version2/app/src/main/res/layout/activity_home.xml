@@ -39,6 +39,16 @@
                 android:gravity="center_vertical" />
         </LinearLayout>
 
+        <!-- Barra de búsqueda -->
+        <SearchView
+            android:id="@+id/searchView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/white"
+            android:iconifiedByDefault="false"
+            android:padding="8dp"
+            android:queryHint="Buscar servicio..." />
+
         <!-- Fragmento del mapa -->
         <androidx.fragment.app.FragmentContainerView
             android:id="@+id/map"

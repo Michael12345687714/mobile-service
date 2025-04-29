@@ -21,6 +21,7 @@ import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import android.widget.SearchView
 
 class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -35,10 +36,12 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
     }
+    private var allServiceMarkers = mutableListOf<Pair<Marker, String>>() // Lista de marcadores y sus nombres
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_home)
+
 
         auth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
@@ -58,6 +61,19 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         menuButton.setOnClickListener {
             drawerLayout.openDrawer(Gravity.START)
         }
+        val searchView = findViewById<SearchView>(R.id.searchView)
+
+        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                return false // No hacemos nada al enviar
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                filterServices(newText.orEmpty())
+                return true
+            }
+        })
+
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -131,25 +147,44 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                 }
 
                 mMap.clear()
+                allServiceMarkers.clear() // Limpiar antes de agregar
 
                 snapshots?.forEach { doc ->
                     val lat = doc.getDouble("latitude") ?: return@forEach
                     val lng = doc.getDouble("longitude") ?: return@forEach
                     val userId = doc.id
 
-                    // Consultamos si este usuario está en la colección de servicios
                     db.collection("userServices").document(userId).get()
                         .addOnSuccessListener { serviceDoc ->
                             if (serviceDoc.exists()) {
-                                val marker = MarkerOptions()
-                                    .position(LatLng(lat, lng))
-                                    .title("Servicio: ${serviceDoc.getString("username") ?: userId}")
-                                mMap.addMarker(marker)
+                                val serviceName = serviceDoc.getString("username") ?: userId
+                                val marker = mMap.addMarker(
+                                    MarkerOptions()
+                                        .position(LatLng(lat, lng))
+                                        .title("Servicio: $serviceName")
+                                )
+                                if (marker != null) {
+                                    allServiceMarkers.add(Pair(marker, serviceName))
+                                }
                             }
                         }
                 }
             }
     }
+    private fun filterServices(query: String) {
+        val lowerCaseQuery = query.lowercase()
+
+        allServiceMarkers.forEach { (marker, serviceName) ->
+            marker.isVisible = serviceName.lowercase().contains(lowerCaseQuery)
+        }
+
+        // Si no hay ningún marcador visible, mostramos un toast
+        if (allServiceMarkers.none { it.first.isVisible }) {
+            Toast.makeText(this, "No se encontraron resultados", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+
 
 
     override fun onRequestPermissionsResult(
@@ -166,16 +201,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onDestroy() {
         super.onDestroy()
-        val uid = auth.currentUser?.uid
-        if (uid != null) {
-            db.collection("locations").document(uid).update("isOnline", false)
-        }
-        if (::locationCallback.isInitialized) {
-            fusedLocationClient.removeLocationUpdates(locationCallback)
-        }
-    }
-
-    fun setUserOfflineAndStopLocation() {
         val uid = auth.currentUser?.uid
         if (uid != null) {
             db.collection("locations").document(uid).update("isOnline", false)
