@@ -9,9 +9,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mobile-service/android/version2
 
     steps:
     - uses: actions/checkout@v3
@@ -26,3 +23,4 @@ jobs:
       run: |
         chmod +x gradlew
         ./gradlew build
+      working-directory: mobile-service/android/version2
