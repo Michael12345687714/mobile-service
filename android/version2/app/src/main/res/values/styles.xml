@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <!-- Colores principales -->
+
+
+        <!-- Eliminar la barra de acción -->
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+
+        <!-- Estilo para efectos ripple -->
+        <item name="colorControlHighlight">@color/rippleEffect</item>
+
+        <!-- Estilo para CardView por defecto -->
+        <item name="cardViewStyle">@style/CardViewStyle</item>
+    </style>
+
+    <!-- Estilo para CardViews -->
+    <style name="CardViewStyle" parent="Widget.MaterialComponents.CardView">
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">4dp</item>
+        <item name="contentPadding">0dp</item>
+    </style>
+
+    <!-- Estilo para tarjetas de servicio -->
+    <style name="ServiceCardStyle">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">0dp</item>
+        <item name="android:layout_marginHorizontal">8dp</item>
+        <item name="android:foreground">?attr/selectableItemBackground</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">4dp</item>
+    </style>
+
+    <!-- Estilo para animaciones -->
+    <style name="ScaleAnimation">
+        <item name="android:duration">300</item>
+        <item name="android:interpolator">@android:anim/overshoot_interpolator</item>
+    </style>
+</resources>
