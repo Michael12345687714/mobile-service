@@ -1,67 +1,329 @@
+<?xml version="1.0" encoding="utf-8"?>
 <androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/drawerLayout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
 
     <!-- Contenido principal -->
-    <LinearLayout
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:layout_height="match_parent">
 
-        <!-- Barra superior con botón -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:background="?attr/colorPrimary">
+            android:layout_height="match_parent"
+            android:orientation="vertical">
 
-            <ImageButton
-                android:id="@+id/menuButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="@android:color/transparent"
-                android:src="@android:drawable/ic_menu_sort_by_size"
-                app:tint="@android:color/white"
-                android:contentDescription="Abrir menú lateral" />
+            <!-- Barra superior con botón y título mejorado -->
+            <com.google.android.material.appbar.AppBarLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
 
+                <androidx.appcompat.widget.Toolbar
+                    android:id="@+id/toolbar"
+                    android:layout_width="match_parent"
+                    android:layout_height="?attr/actionBarSize"
+                    android:background="?attr/colorPrimary"
+                    android:elevation="4dp"
+                    android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+                    app:popupTheme="@style/ThemeOverlay.AppCompat.Light">
 
-            <TextView
-                android:id="@+id/appTitle"
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageButton
+                            android:id="@+id/menuButton"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:src="@android:drawable/ic_menu_sort_by_size"
+                            app:tint="@android:color/white"
+                            android:contentDescription="Abrir menú lateral" />
+
+                        <TextView
+                            android:id="@+id/appTitle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:padding="8dp"
+                            android:text="Mis Servicios"
+                            android:textColor="@android:color/white"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+
+                        <!-- Icono de lupa con ripple effect -->
+                        <ImageButton
+                            android:id="@+id/searchButton"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:src="@android:drawable/ic_menu_search"
+                            app:tint="@android:color/white"
+                            android:contentDescription="Buscar servicios" />
+                    </LinearLayout>
+                </androidx.appcompat.widget.Toolbar>
+            </com.google.android.material.appbar.AppBarLayout>
+
+            <!-- Barra de búsqueda mejorada (inicialmente oculta) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/searchCardView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="16dp"
-                android:text="Mis Servicios"
-                android:textColor="@android:color/white"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:gravity="center_vertical" />
+                android:layout_marginHorizontal="8dp"
+                android:layout_marginTop="-4dp"
+                android:layout_marginBottom="4dp"
+                app:cardBackgroundColor="@android:color/white"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="4dp"
+                android:visibility="gone">
+
+                <SearchView
+                    android:id="@+id/searchView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@android:color/transparent"
+                    android:iconifiedByDefault="false"
+                    android:padding="8dp"
+                    android:queryHint="Buscar servicio..." />
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Fragmento del mapa -->
+            <androidx.fragment.app.FragmentContainerView
+                android:id="@+id/map"
+                android:name="com.google.android.gms.maps.SupportMapFragment"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
         </LinearLayout>
 
-        <!-- Barra de búsqueda -->
-        <SearchView
-            android:id="@+id/searchView"
+        <!-- Sección de servicios mejorada -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/servicesSection"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@android:color/white"
-            android:iconifiedByDefault="false"
-            android:padding="8dp"
-            android:queryHint="Buscar servicio..." />
+            android:layout_gravity="bottom">
 
-        <!-- Fragmento del mapa -->
-        <androidx.fragment.app.FragmentContainerView
-            android:id="@+id/map"
-            android:name="com.google.android.gms.maps.SupportMapFragment"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-    </LinearLayout>
+            <!-- Fondo con gradiente para la sección de servicios -->
+            <View
+                android:id="@+id/servicesBackground"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:background="@drawable/services_gradient_background"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintHeight_percent="1" />
+
+            <TextView
+                android:id="@+id/servicesTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Nuestros Servicios"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#2E7D32"
+                android:layout_marginTop="12dp"
+                app:layout_constraintTop_toTopOf="@id/servicesBackground"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+            <!-- Servicio de Agua -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/waterServiceCard"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_marginHorizontal="8dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:layout_constraintWidth_percent="0.28"
+                app:layout_constraintDimensionRatio="1:1"
+                app:layout_constraintTop_toBottomOf="@id/servicesTitle"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/gasServiceCard"
+                app:layout_constraintBottom_toBottomOf="@id/servicesBackground"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="16dp"
+                android:foreground="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@drawable/service_card_selector"
+                style="@style/ServiceCardStyle">
+
+                <LinearLayout
+                    android:id="@+id/waterContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="8dp"
+                    android:background="@drawable/water_service_selector">
+
+                    <ImageView
+                        android:id="@+id/waterIcon"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@drawable/ic_water_truck"
+                        android:layout_marginBottom="4dp"
+                        />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Agua"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="#0277BD"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Servicio a domicilio"
+                        android:textSize="10sp"
+                        android:textColor="#757575"
+                        android:gravity="center"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Servicio de Gas -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/gasServiceCard"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_marginHorizontal="8dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:layout_constraintWidth_percent="0.28"
+                app:layout_constraintDimensionRatio="1:1"
+                app:layout_constraintTop_toBottomOf="@id/servicesTitle"
+                app:layout_constraintStart_toEndOf="@id/waterServiceCard"
+                app:layout_constraintEnd_toStartOf="@id/garbageServiceCard"
+                app:layout_constraintBottom_toBottomOf="@id/servicesBackground"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="16dp"
+                android:foreground="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@drawable/service_card_selector"
+                style="@style/ServiceCardStyle">
+
+                <LinearLayout
+                    android:id="@+id/gasContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="8dp"
+                    android:background="@drawable/gas_service_selector">
+
+                    <ImageView
+                        android:id="@+id/gasIcon"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@drawable/ic_gas_truck"
+                        android:layout_marginBottom="4dp"
+                        />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Gas"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="#E65100"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Rápido y seguro"
+                        android:textSize="10sp"
+                        android:textColor="#757575"
+                        android:gravity="center"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Servicio de Basura -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/garbageServiceCard"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_marginHorizontal="8dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:layout_constraintWidth_percent="0.28"
+                app:layout_constraintDimensionRatio="1:1"
+                app:layout_constraintTop_toBottomOf="@id/servicesTitle"
+                app:layout_constraintStart_toEndOf="@id/gasServiceCard"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintBottom_toBottomOf="@id/servicesBackground"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="16dp"
+                android:foreground="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@drawable/service_card_selector"
+                style="@style/ServiceCardStyle">
+
+                <LinearLayout
+                    android:id="@+id/garbageContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="8dp"
+                    android:background="@drawable/garbage_service_selector">
+
+                    <ImageView
+                        android:id="@+id/garbageIcon"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@drawable/ic_garbage_truck"
+                        android:layout_marginBottom="4dp"
+                       />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Basurero"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="#33691E"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Recogida eficiente"
+                        android:textSize="10sp"
+                        android:textColor="#757575"
+                        android:gravity="center"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Indicador de selección animada -->
+            <View
+                android:id="@+id/selectionIndicator"
+                android:layout_width="0dp"
+                android:layout_height="3dp"
+                android:background="#4CAF50"
+                android:layout_marginTop="4dp"
+                app:layout_constraintTop_toBottomOf="@id/servicesTitle"
+                app:layout_constraintStart_toStartOf="@id/waterServiceCard"
+                app:layout_constraintEnd_toEndOf="@id/waterServiceCard"
+                android:visibility="gone"/>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
     <!-- Drawer lateral -->
-    <FrameLayout
+    <com.google.android.material.navigation.NavigationView
         android:id="@+id/drawerFragmentContainer"
+      
         android:layout_width="300dp"
         android:layout_height="match_parent"
-        android:layout_gravity="start" />
+        android:layout_gravity="start"
+        app:headerLayout="@layout/nav_header"
+        app:menu="@menu/drawer_menu" />
 </androidx.drawerlayout.widget.DrawerLayout>
