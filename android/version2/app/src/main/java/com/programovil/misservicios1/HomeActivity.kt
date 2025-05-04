@@ -371,8 +371,16 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
+
+        mMap.uiSettings.isCompassEnabled = true
+
+        mMap.uiSettings.isRotateGesturesEnabled = true
+
         checkLocationPermission()
     }
+
+
+
 
     private fun checkLocationPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
