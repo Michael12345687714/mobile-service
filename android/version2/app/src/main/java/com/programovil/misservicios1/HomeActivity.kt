@@ -4,10 +4,12 @@ import android.Manifest
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.animation.OvershootInterpolator
 import android.view.inputmethod.InputMethodManager
@@ -41,7 +43,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.android.material.card.MaterialCardView
 import android.widget.EditText
 import android.widget.ImageView
-
+import androidx.appcompat.app.AlertDialog
 
 
 class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
@@ -357,18 +359,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         listenToServiceProviders()
     }
 
-    fun setUserOfflineAndStopLocation() {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
-        if (uid != null) {
-            FirebaseFirestore.getInstance().collection("locations").document(uid)
-                .update("isOnline", false)
-        }
-
-        if (::locationCallback.isInitialized) {
-            fusedLocationClient.removeLocationUpdates(locationCallback)
-        }
-    }
-
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
 
@@ -378,8 +368,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
         checkLocationPermission()
     }
-
-
 
 
     private fun checkLocationPermission() {
@@ -498,7 +486,8 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
-    // Solo los clientes escuchan las ubicaciones de los proveedores de servicio
+    //-------------------------------------------------------------------------
+// Solo los clientes escuchan las ubicaciones de los proveedores de servicio
     private fun listenToServiceProviders() {
         db.collection("locations")
             .whereEqualTo("isOnline", true)
@@ -508,53 +497,89 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                     return@addSnapshotListener
                 }
 
-                // Eliminamos los marcadores de servicio anteriores pero mantenemos el indicador de ubicación
                 allServiceMarkers.forEach { (marker, _) -> marker.remove() }
-                allServiceMarkers.clear() // Limpiar antes de agregar
+                allServiceMarkers.clear()
 
                 snapshots?.forEach { doc ->
                     val userId = doc.id
-                    if (userId == auth.currentUser?.uid) return@forEach // Saltamos nuestro propio documento
+                    if (userId == auth.currentUser?.uid) return@forEach
 
-                    // Solo mostrar usuarios de tipo Servicio
                     db.collection("userServices").document(userId).get()
                         .addOnSuccessListener { serviceDoc ->
                             if (serviceDoc.exists()) {
                                 val userType = serviceDoc.getString("userType")
                                 if (userType == "Servicio") {
                                     val serviceType = serviceDoc.getString("serviceType") ?: "Desconocido"
-
-                                    // Aplicar el filtro - solo mostrar si no hay filtro o si coincide con el filtro
                                     if (filteredServiceType == null || filteredServiceType == serviceType) {
                                         val username = serviceDoc.getString("username") ?: "Servicio"
                                         val lat = doc.getDouble("latitude") ?: return@addOnSuccessListener
                                         val lng = doc.getDouble("longitude") ?: return@addOnSuccessListener
-
-                                        val icon = when (serviceType) {
-                                            "Agua" -> getBitmapDescriptorFromVector(R.drawable.ic_water_truck, PROVIDER_ICON_SIZE_DP, PROVIDER_ICON_SIZE_DP)
-                                            "GLP" -> getBitmapDescriptorFromVector(R.drawable.ic_gas_truck, PROVIDER_ICON_SIZE_DP, PROVIDER_ICON_SIZE_DP)
-                                            "Carro de basura" -> getBitmapDescriptorFromVector(R.drawable.ic_garbage_truck, PROVIDER_ICON_SIZE_DP, PROVIDER_ICON_SIZE_DP)
-                                            else -> getBitmapDescriptorFromVector(R.drawable.ic_filter, PROVIDER_ICON_SIZE_DP, PROVIDER_ICON_SIZE_DP)
-                                        }
+                                        val icon = getServiceIcon(serviceType)
 
                                         val marker = mMap.addMarker(
                                             MarkerOptions()
                                                 .position(LatLng(lat, lng))
                                                 .title("Servicio: $username ($serviceType)")
+                                                .snippet(serviceType)
                                                 .icon(icon)
                                         )
 
+                                        val acceptOrders = serviceDoc.getString("acceptOrders") ?: "false"
+
                                         if (marker != null) {
                                             allServiceMarkers.add(Pair(marker, username))
+                                            marker.tag = listOf(userId, username, serviceType, acceptOrders)
                                         }
                                     }
                                 }
                             }
                         }
+                        .addOnFailureListener { exception ->
+                            Log.e("ServiceProvider", "Error al obtener el documento del servicio", exception)
+                        }
+                }
+
+                mMap.setOnMarkerClickListener { clickedMarker ->
+                    val tag = clickedMarker.tag
+                    if (tag is List<*> && tag.size == 4) {
+                        val userId = tag[0] as? String ?: return@setOnMarkerClickListener false
+                        val username = tag[1] as? String ?: return@setOnMarkerClickListener false
+                        val serviceType = tag[2] as? String ?: return@setOnMarkerClickListener false
+                        val acceptOrders = tag[3] as? String ?: "false"
+
+                        showServiceDialog(userId, username, serviceType, acceptOrders)
+                        true
+                    } else {
+                        false
+                    }
                 }
             }
     }
 
+    // Mostrar ventana emergente al hacer clic en un servicio
+    private fun showServiceDialog(userId: String, username: String, serviceType: String, acceptOrders: String) {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Detalles del Servicio")
+        builder.setMessage("Proveedor: $username\nTipo de servicio: $serviceType")
+
+        if (acceptOrders == "true") {
+            builder.setPositiveButton("Hacer Pedido") { dialog, _ ->
+                val intent = Intent(this, OrderActivity::class.java)
+                intent.putExtra("username", username)
+                intent.putExtra("serviceType", serviceType)
+                intent.putExtra("SERVICE_UID", userId)
+                startActivity(intent)
+                dialog.dismiss()
+            }
+        }
+
+        builder.setNegativeButton("Cancelar") { dialog, _ ->
+            dialog.dismiss()
+        }
+
+        builder.show()
+    }
+//-------------------------------------------------------------------------
     private fun getBitmapDescriptorFromVector(
         vectorResId: Int,
         widthDp: Int,

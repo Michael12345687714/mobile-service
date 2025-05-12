@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <!-- Imagen del servicio -->
+        <ImageView
+            android:id="@+id/serviceImage"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"
+            android:scaleType="centerCrop"
+            android:background="@drawable/circle_background"
+            android:padding="4dp"
+            android:contentDescription="Imagen del proveedor" />
+
+        <!-- Título de la sección -->
+        <TextView
+            android:id="@+id/serviceDataTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Datos del servicio:"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp" />
+
+        <!-- Línea divisoria -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="12dp"
+            android:backgroundTint="@color/primary"
+            android:background="#CCCCCC" />
+
+        <!-- Nombre del proveedor -->
+        <TextView
+            android:id="@+id/serviceName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nombre del Servicio"
+            android:textSize="18sp"
+            android:layout_marginTop="4dp" />
+
+        <!-- Tipo de servicio -->
+        <TextView
+            android:id="@+id/serviceType"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tipo de Servicio"
+            android:textSize="18sp"
+            android:layout_marginTop="4dp" />
+
+        <!-- Correo del proveedor -->
+        <TextView
+            android:id="@+id/serviceEmail"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Correo del proveedor"
+            android:textSize="18sp"
+            android:layout_marginTop="4dp" />
+
+        <!-- Campo cantidad -->
+        <EditText
+            android:id="@+id/quantityEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Cantidad"
+            android:inputType="number"
+            android:layout_marginTop="16dp" />
+
+        <!-- Campo nota -->
+        <EditText
+            android:id="@+id/noteEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Nota (máximo 300 caracteres)"
+            android:inputType="textMultiLine"
+            android:maxLength="300"
+            android:minLines="3"
+            android:layout_marginTop="8dp" />
+
+        <!-- Botón para hacer el pedido -->
+        <Button
+            android:id="@+id/orderButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Hacer Pedido"
+            android:textSize="16sp"
+            android:layout_marginTop="20dp" />
+
+    </LinearLayout>
+</ScrollView>
