@@ -1,34 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:gravity="center"
-    android:padding="32dp">
+    android:background="#90ee90"
+    android:padding="16dp"
+    android:layout_gravity="center"
+    android:elevation="18dp">
 
-    <ImageView
-        android:layout_width="64dp"
-        android:layout_height="64dp"
-        android:src="@drawable/ic_notification"
-        android:alpha="0.7"/>
 
-    <TextView
+    <!-- Tarjeta de contenido -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="No hay notificaciones"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textColor="#FFFFFF"
+        android:layout_height="100dp"
+        android:orientation="vertical"
         android:gravity="center"
-        android:paddingTop="16dp"/>
+        android:layout_marginTop="8dp"
+        android:padding="16dp"
+        android:layout_gravity="center"
+        android:clipToOutline="true"
+        android:background="@drawable/rounded_card">
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="En este momento no tienes pedidos pendientes"
-        android:textSize="14sp"
-        android:textColor="#EEEEEE"
-        android:gravity="center"
-        android:paddingTop="8dp"/>
+        <TextView
+            android:id="@+id/no_hay_notificaciones_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No hay notificaciones pendientes en este momento"
+            android:textColor="#000000"
+            android:textSize="14sp"
+            android:gravity="center" />
+
+    </LinearLayout>
 </LinearLayout>
