@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#90ee90"
+    android:layout_gravity="center"
+    android:elevation="18dp">
+
+    <!-- Tarjeta de contenido -->
+    <LinearLayout
+        android:id="@+id/rounded_card2"
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_marginTop="8dp"
+        android:padding="16dp"
+        android:layout_gravity="center"
+        android:clipToOutline="true"
+        android:background="@drawable/rounded_card">
+
+        <TextView
+            android:id="@+id/no_hay_notificaciones_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No hay notificaciones pendientes en este momento"
+            android:textColor="#000000"
+            android:textSize="14sp"
+            android:gravity="center" />
+    </LinearLayout>
+</LinearLayout>
