@@ -44,6 +44,16 @@ import com.google.android.material.card.MaterialCardView
 import android.widget.EditText
 import android.widget.ImageView
 import androidx.appcompat.app.AlertDialog
+import android.app.ProgressDialog
+import android.graphics.Color
+import android.view.Gravity
+import android.view.LayoutInflater
+
+import android.widget.*
+import android.view.ViewGroup
+import java.text.SimpleDateFormat
+import java.util.Locale
+
 
 
 class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
@@ -67,10 +77,37 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     private val allServiceMarkers = mutableListOf<Pair<Marker, String>>()
     private lateinit var searchCardView: MaterialCardView
 
+
+
+
+    private lateinit var notificacionesContainer: ConstraintLayout
+    private lateinit var closeNotificacionesButton: TextView
+
+
+
+    private lateinit var notificationButton: ImageButton
+    private lateinit var contenedorNotificaciones: LinearLayout
+    private val notificacionesList = mutableListOf<Notificacion>()
+
+    // clase para manejar los datos de notificaciones
+    data class Notificacion(
+        val id: String = "",
+        val cantidad: Int = 0,
+        val clienteId: String = "",
+        val estado: String = "pendiente",
+        val nota: String = "",
+        val proveedorId: String = "",
+        val timestamp: com.google.firebase.Timestamp? = null,
+        val ubicacionCliente: Map<String, Double>? = null,
+        var nombreCliente: String = ""
+    )
+
+
+
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
-        private const val USER_ICON_SIZE_DP = 50  // Tamaño para el icono del usuario
-        private const val PROVIDER_ICON_SIZE_DP = 40  // Tamaño para los iconos de proveedores
+        private const val USER_ICON_SIZE_DP = 50
+        private const val PROVIDER_ICON_SIZE_DP = 40
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,7 +124,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
 
     private fun initViews() {
-        // Inicializar las vistas para la sección de servicios con animaciones
         waterServiceCard = findViewById(R.id.waterServiceCard)
         gasServiceCard = findViewById(R.id.gasServiceCard)
         garbageServiceCard = findViewById(R.id.garbageServiceCard)
@@ -97,30 +133,29 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawerLayout)
         val menuButton = findViewById<View>(R.id.menuButton)
 
-        // Usar una única referencia para los elementos de búsqueda
+
         val searchCardView = findViewById<MaterialCardView>(R.id.searchCardView)
         val searchView = findViewById<SearchView>(R.id.searchView)
         val searchButton = findViewById<ImageButton>(R.id.searchButton)
 
-        // Un solo listener para el botón de búsqueda
         searchButton.setOnClickListener {
-            // Verificamos la visibilidad del CardView, no del SearchView
+
             if (searchCardView.visibility == View.VISIBLE) {
-                // Ocultar la barra de búsqueda
+
                 searchCardView.visibility = View.GONE
-                // Ocultar teclado
+
                 val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.hideSoftInputFromWindow(searchView.windowToken, 0)
             } else {
-                // Mostrar la barra de búsqueda
+
                 searchCardView.visibility = View.VISIBLE
-                // Dar foco y mostrar teclado
+
                 searchView.isIconified = false
                 searchView.requestFocus()
             }
         }
 
-        // Usar searchCardView en el onCloseListener
+
         searchView.setOnCloseListener {
             searchCardView.visibility = View.GONE
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -138,7 +173,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         )
         val searchMagIcon = searchView.findViewById<ImageView>(searchMagId)
 
-        // Hacer que el ícono de lupa dentro del SearchView también ejecute la búsqueda
+
         searchMagIcon?.setOnClickListener {
             val query = searchSrcText?.text.toString()
             if (query.isNotEmpty()) {
@@ -173,7 +208,367 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                 return true
             }
         })
+
+        // Inicializar componentes de notificaciones
+        notificationButton = findViewById(R.id.notificationButton)
+        contenedorNotificaciones = findViewById(R.id.contenedorNotificaciones)
+        notificacionesContainer = findViewById(R.id.notificacionesContainer)
+        closeNotificacionesButton = findViewById(R.id.close_notificaciones_button)
+
+        // Configurar el botón de cierre en el encabezado de notificaciones
+        closeNotificacionesButton.setOnClickListener {
+            notificacionesContainer.animate()
+                .alpha(0f)
+                .setDuration(300)
+                .withEndAction {
+                    notificacionesContainer.visibility = View.GONE
+                }
+                .start()
+        }
+
+        // Configurar el botón de notificaciones
+        notificationButton.setOnClickListener {
+            if (notificacionesContainer.visibility == View.VISIBLE) {
+                // Si está visible, ocultar
+                notificacionesContainer.animate()
+                    .alpha(0f)
+                    .setDuration(300)
+                    .withEndAction {
+                        notificacionesContainer.visibility = View.GONE
+                    }
+                    .start()
+            } else {
+                // Si está oculto, cargar notificaciones y mostrar
+                cargarNotificaciones()
+            }
+        }
     }
+
+    private fun cargarNotificaciones() {
+        // Mostrar indicador de carga
+        mostrarCargando()
+
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            mostrarNoNotificaciones("Debe iniciar sesión para ver notificaciones")
+            return
+        }
+
+        val proveedorId = currentUser.uid
+
+
+        db.collection("userServices")
+            .document(proveedorId)
+            .collection("orders")
+            .whereEqualTo("estado", "pendiente")
+            .get()
+            .addOnSuccessListener { documents ->
+
+                Log.d("FirestoreDebug", "Pedidos pendientes encontrados: ${documents.size()}")
+
+                // Limpiar lista anterior
+                notificacionesList.clear()
+
+                if (documents.isEmpty) {
+                    // No hay notificaciones
+                    mostrarNoNotificaciones("No hay pedidos pendientes en este momento")
+                } else {
+                    // Procesar cada notificación y obtener datos adicionales necesarios
+                    var notificacionesProcesadas = 0
+                    val totalNotificaciones = documents.size()
+
+                    for (document in documents) {
+                        val notificacion = document.toObject(Notificacion::class.java).copy(id = document.id)
+
+
+                        db.collection("userClients")
+                            .document(notificacion.clienteId)
+                            .get()
+                            .addOnSuccessListener { clientDocument ->
+                                if (clientDocument.exists()) {
+                                    notificacion.nombreCliente = clientDocument.getString("username") ?: "Cliente"
+                                } else {
+                                    notificacion.nombreCliente = "Cliente #${notificacion.clienteId.take(5)}"
+                                }
+
+
+                                notificacionesList.add(notificacion)
+
+
+                                notificacionesProcesadas++
+
+
+                                if (notificacionesProcesadas == totalNotificaciones) {
+
+                                    notificacionesList.sortByDescending { it.timestamp }
+                                    mostrarNotificaciones()
+                                }
+                            }
+                            .addOnFailureListener { e ->
+
+                                notificacion.nombreCliente = "Cliente #${notificacion.clienteId.take(5)}"
+                                notificacionesList.add(notificacion)
+                                notificacionesProcesadas++
+
+                                if (notificacionesProcesadas == totalNotificaciones) {
+                                    // Ordenar por timestamp para mostrar las más recientes primero
+                                    notificacionesList.sortByDescending { it.timestamp }
+                                    mostrarNotificaciones()
+                                }
+                            }
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                // Error al cargar notificaciones
+                mostrarNoNotificaciones("Error al cargar pedidos: ${e.message}")
+            }
+    }
+
+    // Método para mostrar un indicador de carga
+    private fun mostrarCargando() {
+        // Limpiar el contenedor
+        contenedorNotificaciones.removeAllViews()
+        val progressBar = ProgressBar(this)
+        val params = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        params.gravity = Gravity.CENTER
+        params.topMargin = 50
+        params.bottomMargin = 50
+        progressBar.layoutParams = params
+
+        contenedorNotificaciones.addView(progressBar)
+
+        // Hacer visible el contenedor
+        notificacionesContainer.alpha = 0f
+        notificacionesContainer.visibility = View.VISIBLE
+        notificacionesContainer.animate()
+            .alpha(1f)
+            .setDuration(300)
+            .start()
+    }
+
+    // Método para mostrar que no hay notificaciones
+    private fun mostrarNoNotificaciones(mensaje: String = "No hay pedidos pendientes en este momento") {
+        // Limpiar el contenedor
+        contenedorNotificaciones.removeAllViews()
+
+        // Inflar la vista de no notificaciones
+        val noNotificacionesView = LayoutInflater.from(this).inflate(
+            R.layout.no_notificaciones_layout, contenedorNotificaciones, false
+        )
+
+        val mensajeTextView = noNotificacionesView.findViewById<TextView>(R.id.no_hay_notificaciones_text)
+
+
+        if (mensajeTextView != null) {
+            mensajeTextView.text = mensaje
+        } else {
+
+            val allTextViews = ArrayList<TextView>()
+            findAllTextViews(noNotificacionesView, allTextViews)
+            if (allTextViews.isNotEmpty()) {
+
+                allTextViews[0].text = mensaje
+            }
+        }
+
+        //val closeButton = noNotificacionesView.findViewById<TextView>(R.id.close_button)
+//        closeButton?.setOnClickListener {
+//            notificacionesContainer.animate()
+//                .alpha(0f)
+//                .setDuration(300)
+//                .withEndAction {
+//                    notificacionesContainer.visibility = View.GONE
+//                }
+//                .start()
+//        }
+
+
+        contenedorNotificaciones.addView(noNotificacionesView)
+
+
+        if (notificacionesContainer.visibility != View.VISIBLE) {
+            notificacionesContainer.alpha = 0f
+            notificacionesContainer.visibility = View.VISIBLE
+            notificacionesContainer.animate()
+                .alpha(1f)
+                .setDuration(300)
+                .start()
+        }
+    }
+
+    // Método auxiliar para encontrar todos los TextView en un layout
+    private fun findAllTextViews(view: View, textViews: ArrayList<TextView>) {
+        if (view is TextView) {
+            textViews.add(view)
+        } else if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                findAllTextViews(view.getChildAt(i), textViews)
+            }
+        }
+    }
+
+    // Método para mostrar las notificaciones
+    private fun mostrarNotificaciones() {
+        // Limpiar el contenedor
+        contenedorNotificaciones.removeAllViews()
+        for (notificacion in notificacionesList) {
+            val notificacionView = crearVistaNotificacion(notificacion)
+            contenedorNotificaciones.addView(notificacionView)
+        }
+
+        // Hacer visible el contenedor
+        notificacionesContainer.alpha = 0f
+        notificacionesContainer.visibility = View.VISIBLE
+        notificacionesContainer.animate()
+            .alpha(1f)
+            .setDuration(300)
+            .start()
+        actualizarContadorNotificaciones(notificacionesList.size)
+    }
+
+    // Método para crear la vista de una notificación individual
+    private fun crearVistaNotificacion(notificacion: Notificacion): View {
+        // Inflar la vista desde el layout
+        val notificacionView = LayoutInflater.from(this).inflate(
+            R.layout.item_notificacion, contenedorNotificaciones, false
+        )
+
+        // Obtener referencias a las vistas
+        val tituloPedido = notificacionView.findViewById<TextView>(R.id.titulo_pedido)
+        val cantidadPedido = notificacionView.findViewById<TextView>(R.id.cantidad_pedido)
+        val notaPedido = notificacionView.findViewById<TextView>(R.id.nota_pedido)
+        val clientePedido = notificacionView.findViewById<TextView>(R.id.cliente_pedido)
+        val fechaPedido = notificacionView.findViewById<TextView>(R.id.fecha_pedido)
+        val btnAceptar = notificacionView.findViewById<Button>(R.id.btn_aceptar)
+        val btnRechazar = notificacionView.findViewById<Button>(R.id.btn_rechazar)
+
+        // Configurar los datos
+        tituloPedido.text = "📍 Pedido # ${notificacion.id.take(8)}"
+        cantidadPedido.text = " ${notificacion.cantidad}"
+        notaPedido.text = " ${notificacion.nota}"
+        clientePedido.text = "${notificacion.nombreCliente}"
+
+        // Formatear fecha y hora
+        val fechaHora = if (notificacion.timestamp != null) {
+            val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+            dateFormat.format(notificacion.timestamp.toDate())
+        } else {
+            "Fecha no disponible"
+        }
+        fechaPedido.text = "$fechaHora"
+
+        // Configurar los botones
+        btnAceptar.setOnClickListener {
+            actualizarEstadoNotificacion(notificacion.id, "aceptado")
+        }
+
+        btnRechazar.setOnClickListener {
+            actualizarEstadoNotificacion(notificacion.id, "rechazado")
+        }
+
+        return notificacionView
+    }
+
+    // Método para actualizar el estado de una notificación
+    private fun actualizarEstadoNotificacion(notificacionId: String, nuevoEstado: String) {
+        // Mostrar un diálogo de progreso
+        val progressDialog = ProgressDialog(this)
+        progressDialog.setMessage("Procesando...")
+        progressDialog.setCancelable(false)
+        progressDialog.show()
+
+        // Obtener el usuario actual para identificar la colección correcta
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            progressDialog.dismiss()
+            Toast.makeText(this, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val proveedorId = currentUser.uid
+
+        // Actualizar el estado en Firebase - asegurarse de usar la ruta correcta
+        db.collection("userServices")
+            .document(proveedorId)
+            .collection("orders")
+            .document(notificacionId)
+            .update("estado", nuevoEstado)
+            .addOnSuccessListener {
+                // Eliminar la notificación de la lista
+                val index = notificacionesList.indexOfFirst { it.id == notificacionId }
+                if (index != -1) {
+                    notificacionesList.removeAt(index)
+                }
+
+                // Cerrar el diálogo de progreso
+                progressDialog.dismiss()
+
+                // Mostrar mensaje de confirmación
+                Toast.makeText(
+                    this,
+                    "Pedido ${if (nuevoEstado == "aceptado") "aceptado" else "rechazado"} correctamente",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+
+                if (notificacionesList.isEmpty()) {
+                    mostrarNoNotificaciones()
+                } else {
+                    mostrarNotificaciones()
+                }
+            }
+            .addOnFailureListener { e ->
+                // Cerrar el diálogo de progreso
+                progressDialog.dismiss()
+
+                // Mostrar mensaje de error
+                Toast.makeText(
+                    this,
+                    "Error al actualizar: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+    }
+
+    // Método para actualizar el contador visual de notificaciones
+    private fun actualizarContadorNotificaciones(count: Int) {
+        // Cambiar el color de la campana según si hay notificaciones o no
+        if (count > 0) {
+            notificationButton.setColorFilter(Color.parseColor("#FFD600"))  // Amarillo
+        } else {
+            notificationButton.setColorFilter(Color.GRAY)
+        }
+
+        // Aquí  un contador visual con el número de notificaciones
+
+    }
+
+    // Añade este método para ser llamado en el onResume() de la actividad
+// para actualizar las notificaciones cuando el usuario vuelve a la app
+    override fun onResume() {
+        super.onResume()
+
+        // Verificar si hay usuario logueado
+        if (auth.currentUser != null) {
+            // Buscar notificaciones pendientes
+            db.collection("orders")
+                .whereEqualTo("proveedorId", auth.currentUser!!.uid)
+                .whereEqualTo("estado", "pendiente")
+                .get()
+                .addOnSuccessListener { documents ->
+                    // Actualizar el indicador visual
+                    actualizarContadorNotificaciones(documents.size())
+                }
+        }
+
+
+    }
+
+
 
     // Método para configurar la sección de servicios con animaciones
     private fun setupServicesSection() {
@@ -579,7 +974,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
         builder.show()
     }
-//-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
     private fun getBitmapDescriptorFromVector(
         vectorResId: Int,
         widthDp: Int,
