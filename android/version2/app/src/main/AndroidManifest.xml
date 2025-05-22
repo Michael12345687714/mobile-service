@@ -19,10 +19,11 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyCARALN5S5FNKPF1WZQQoVPLSzlPk8_tp0" />
         <activity android:name=".HomeActivity" android:exported="false"/>
-        <activity android:name=".RegisterActivity" android:exported="false"/>
-        <activity android:name=".CompleteProfileActivity" android:exported="false"/>
-        <activity android:name=".EditarPerfilActivity" android:exported="false"/>
+        <activity android:name=".usersAccounts.RegisterActivity" android:exported="false"/>
+        <activity android:name=".usersAccounts.CompleteProfileActivity" android:exported="false"/>
+        <activity android:name=".usersAccounts.EditarPerfilActivity" android:exported="false"/>
         <activity android:name=".OrderActivity" android:exported="false"/>
+        <activity android:name=".viewOrders.ViewOrdersActivity" android:exported="false"/>
         <activity
             android:name=".MainActivity"
             android:exported="true">

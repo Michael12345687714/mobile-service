@@ -1,4 +1,4 @@
-package com.programovil.misservicios1
+package com.programovil.misservicios1.usersAccounts
 
 import android.content.Intent
 import android.net.Uri
@@ -11,6 +11,8 @@ import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.programovil.misservicios1.HomeActivity
+import com.programovil.misservicios1.R
 
 class EditarPerfilActivity : AppCompatActivity() {
 

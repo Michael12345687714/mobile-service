@@ -125,11 +125,16 @@ class OrderActivity : AppCompatActivity() {
                         )
                     )
 
+                    //Generar id pedido y guarda
+                    val orderId = db.collection("dummy").document().id
+                    orderData["orderId"] = orderId
+
                     val clientOrdersRef = db.collection("userClients").document(clientUid).collection("orders")
                     val serviceOrdersRef = db.collection("userServices").document(serviceUid).collection("orders")
 
-                    clientOrdersRef.add(orderData)
-                    serviceOrdersRef.add(orderData)
+                    clientOrdersRef.document(orderId).set(orderData)
+                    serviceOrdersRef.document(orderId).set(orderData)
+
 
                     Toast.makeText(this, "Pedido realizado exitosamente", Toast.LENGTH_SHORT).show()
                     finish()

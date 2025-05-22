@@ -66,6 +66,14 @@
         android:paddingTop="4dp"/>
 
     <Button
+        android:id="@+id/viewOrdersButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Ver pedidos"
+        android:layout_marginTop="8dp"
+        android:textColor="#FFFFFF"/>
+
+    <Button
         android:id="@+id/editProfileButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

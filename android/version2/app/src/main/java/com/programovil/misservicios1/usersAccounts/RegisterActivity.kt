@@ -1,4 +1,4 @@
-package com.programovil.misservicios1
+package com.programovil.misservicios1.usersAccounts
 
 import android.os.Bundle
 import android.view.View
@@ -7,6 +7,8 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import android.content.Intent
+import com.programovil.misservicios1.MainActivity
+import com.programovil.misservicios1.R
 
 class RegisterActivity : AppCompatActivity() {
     private lateinit var edtUsername: EditText

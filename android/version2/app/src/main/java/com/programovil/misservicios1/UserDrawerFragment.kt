@@ -14,6 +14,8 @@ import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.programovil.misservicios1.usersAccounts.EditarPerfilActivity
+import com.programovil.misservicios1.viewOrders.ViewOrdersActivity
 
 class UserDrawerFragment : Fragment() {
 
@@ -113,6 +115,14 @@ class UserDrawerFragment : Fragment() {
 
             val intent = Intent(requireContext(), MainActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+        }
+
+        //Botón para ver ordenes de usuario
+        val viewOrdersButton = view.findViewById<Button>(R.id.viewOrdersButton)
+
+        viewOrdersButton.setOnClickListener {
+            val intent = Intent(requireContext(), ViewOrdersActivity::class.java)
             startActivity(intent)
         }
 
