@@ -16,7 +16,8 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import android.widget.TextView
 import androidx.core.content.ContextCompat
-
+import com.programovil.misservicios1.usersAccounts.CompleteProfileActivity
+import com.programovil.misservicios1.usersAccounts.RegisterActivity
 
 
 class MainActivity : AppCompatActivity() {

@@ -1092,7 +1092,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     //-------------------------------------------------------------------------
-// Solo los clientes escuchan las ubicaciones de los proveedores de servicio
+    // Solo los clientes escuchan las ubicaciones de los proveedores de servicio
     private fun listenToServiceProviders() {
         db.collection("locations")
             .whereEqualTo("isOnline", true)

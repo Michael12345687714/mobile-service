@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#E0E0E0"
+    android:layout_marginBottom="8dp">
+
+    <TextView
+        android:id="@+id/nombreText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Usuario:" />
+
+    <TextView
+        android:id="@+id/fechaText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Fecha:" />
+
+    <TextView
+        android:id="@+id/cantidadText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Cantidad:" />
+
+    <TextView
+        android:id="@+id/notaText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Nota:" />
+
+    <TextView
+        android:id="@+id/estadoText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Estado:" />
+
+</LinearLayout>
