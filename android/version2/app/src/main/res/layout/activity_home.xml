@@ -110,108 +110,7 @@
 
 
 
-            <!-- Fragmento de notificaciones dinámicas con scroll -->
-
-
-            <!-- Fragmento de notificaciones dinámicas con scroll mejorado -->
-            <!-- Corrección del fragmento de notificaciones con scroll mejorado -->
-<!--            <androidx.constraintlayout.widget.ConstraintLayout-->
-<!--                android:id="@+id/notificacionesContainer"-->
-<!--                android:layout_width="match_parent"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:visibility="gone">-->
-
-<!--                &lt;!&ndash; Encabezado de notificaciones &ndash;&gt;-->
-<!--                <LinearLayout-->
-<!--                    android:id="@+id/headerNotificaciones"-->
-<!--                    android:layout_width="match_parent"-->
-<!--                    android:layout_height="wrap_content"-->
-<!--                    android:orientation="horizontal"-->
-<!--                    android:background="#90ee90"-->
-<!--                    android:padding="16dp"-->
-<!--                    app:layout_constraintTop_toTopOf="parent"-->
-<!--                    app:layout_constraintStart_toStartOf="parent"-->
-<!--                    app:layout_constraintEnd_toEndOf="parent">-->
-
-<!--                    <TextView-->
-<!--                        android:layout_width="0dp"-->
-<!--                        android:layout_height="wrap_content"-->
-<!--                        android:layout_weight="1"-->
-<!--                        android:text="NOTIFICACIONES"-->
-<!--                        android:textColor="#FFFFFF"-->
-<!--                        android:textSize="16sp"-->
-<!--                        android:textStyle="bold"-->
-<!--                        android:textAllCaps="true"/>-->
-
-<!--                    <TextView-->
-<!--                        android:id="@+id/close_notificaciones_button"-->
-<!--                        android:layout_width="wrap_content"-->
-<!--                        android:layout_height="wrap_content"-->
-<!--                        android:text="X"-->
-<!--                        android:textColor="#FFFFFF"-->
-<!--                        android:textSize="16sp"-->
-<!--                        android:textStyle="bold"-->
-<!--                        android:padding="4dp"/>-->
-<!--                </LinearLayout>-->
-
-<!--                <LinearLayout-->
-<!--                    android:id="@+id/stockContainer"-->
-<!--                    android:layout_width="match_parent"-->
-<!--                    android:layout_height="wrap_content"-->
-<!--                    android:orientation="horizontal"-->
-<!--                    android:background="#D3D3D3"-->
-<!--                    android:padding="16dp"-->
-<!--                    android:layout_marginTop="8dp"-->
-<!--                    app:layout_constraintTop_toBottomOf="@id/headerNotificaciones"-->
-<!--                    app:layout_constraintStart_toStartOf="parent"-->
-<!--                    app:layout_constraintEnd_toEndOf="parent">-->
-
-<!--            <TextView-->
-<!--                android:layout_width="0dp"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:layout_weight="1"-->
-<!--                android:text="STOCK DISPONIBLE"-->
-<!--                android:textColor="#000000"-->
-<!--                android:textSize="16sp"-->
-<!--                android:textStyle="bold"/>-->
-
-<!--            <TextView-->
-<!--                android:id="@+id/stock_counter"-->
-<!--                android:layout_width="wrap_content"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:text="0"-->
-<!--                android:textColor="#000000"-->
-<!--                android:textSize="16sp"-->
-<!--                android:textStyle="bold"/>-->
-<!--        </LinearLayout>-->
-
-
-<!--        &lt;!&ndash; Contenedor de scroll para notificaciones &ndash;&gt;-->
-<!--                <androidx.core.widget.NestedScrollView-->
-<!--                    android:id="@+id/scrollNotificaciones"-->
-<!--                    android:layout_width="match_parent"-->
-<!--                    android:layout_height="800dp"-->
-<!--                    android:fillViewport="true"-->
-<!--                    android:scrollbars="vertical"-->
-<!--                    android:fadeScrollbars="false"-->
-<!--                    android:background="@android:color/white"-->
-<!--                    android:overScrollMode="always"-->
-<!--                    app:layout_constraintTop_toBottomOf="@id/headerNotificaciones"-->
-<!--                    app:layout_constraintStart_toStartOf="parent"-->
-<!--                    app:layout_constraintEnd_toEndOf="parent"-->
-<!--                    android:layout_marginTop="16dp">-->
-
-<!--                    <LinearLayout-->
-<!--                        android:id="@+id/contenedorNotificaciones"-->
-<!--                        android:layout_width="match_parent"-->
-<!--                        android:layout_height="wrap_content"-->
-<!--                        android:orientation="vertical"-->
-<!--                        android:padding="8dp"-->
-<!--                        android:elevation="8dp"-->
-<!--                        android:animateLayoutChanges="true" />-->
-<!--                </androidx.core.widget.NestedScrollView>-->
-<!--            </androidx.constraintlayout.widget.ConstraintLayout>-->
-
+            <!-- Fragmento de notificaciones dinámicas  -->
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/notificacionesContainer"
@@ -311,13 +210,6 @@
                         android:animateLayoutChanges="true" />
                 </androidx.core.widget.NestedScrollView>
             </androidx.constraintlayout.widget.ConstraintLayout>
-
-
-
-
-
-
-
 
 
             <!-- Fragmento del mapa -->
