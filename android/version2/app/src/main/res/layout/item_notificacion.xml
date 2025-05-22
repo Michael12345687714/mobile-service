@@ -1,36 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- res/layout/item_notificacion.xml -->
 <androidx.cardview.widget.CardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/card_notificacion"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="10dp"
     android:layout_marginStart="16dp"
     android:layout_marginEnd="16dp"
-    app:cardBackgroundColor="#B2DFDB"
-    app:cardCornerRadius="15dp"
+    app:cardBackgroundColor="#FFFFFF"
+    app:cardCornerRadius="12dp"
     app:cardElevation="6dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="18dp">
+        android:padding="16dp">
 
-        <!-- Título con diseño mejorado -->
+        <!-- Alerta stock -->
+        <TextView
+            android:id="@+id/stock_warning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⚠️ STOCK INSUFICIENTE"
+            android:textColor="#D32F2F"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:background="#FFEBEE"
+            android:padding="10dp"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone" />
+
+        <!-- Título -->
         <TextView
             android:id="@+id/titulo_pedido"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="📍 Pedido #123"
             android:textColor="#004D40"
-            android:textSize="20sp"
+            android:textSize="18sp"
             android:textStyle="bold"
             android:letterSpacing="0.05"
-            android:paddingBottom="12dp"/>
+            android:paddingBottom="10dp" />
 
-        <!-- Datos importantes con negrilla -->
+        <!-- Cantidad -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -46,18 +61,18 @@
 
             <TextView
                 android:id="@+id/cantidad_pedido"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="10"
                 android:textColor="@android:color/black"/>
         </LinearLayout>
 
-        <!-- Nota con negrilla -->
+        <!-- Nota -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:paddingTop="6dp">
+            android:paddingTop="4dp">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -68,18 +83,18 @@
 
             <TextView
                 android:id="@+id/nota_pedido"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Sin cebolla"
                 android:textColor="@android:color/black"/>
         </LinearLayout>
 
-        <!-- Cliente con negrilla -->
+        <!-- Cliente -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:paddingTop="6dp">
+            android:paddingTop="4dp">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -90,18 +105,18 @@
 
             <TextView
                 android:id="@+id/cliente_pedido"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Juan Pérez"
                 android:textColor="@android:color/black"/>
         </LinearLayout>
 
-        <!-- Fecha y Hora con negrilla -->
+        <!-- Fecha y Hora -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:paddingTop="6dp">
+            android:paddingTop="4dp">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -112,21 +127,21 @@
 
             <TextView
                 android:id="@+id/fecha_pedido"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="2025-05-15 12:30"
                 android:textColor="@android:color/black"/>
         </LinearLayout>
 
-        <!-- Separador visual -->
+        <!-- Línea divisoria -->
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#80004D40"
             android:layout_marginTop="12dp"
-            android:layout_marginBottom="12dp"/>
+            android:layout_marginBottom="12dp"
+            android:background="#33004D40"/>
 
-        <!-- Botones Aceptar/Rechazar mejorados -->
+        <!-- Botones -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -139,26 +154,24 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="6dp"
                 android:text="ACEPTAR"
                 android:backgroundTint="#00695C"
                 android:textColor="@android:color/white"
                 android:textStyle="bold"
-                android:padding="12dp"
-                app:cornerRadius="10dp"/>
+                android:padding="10dp"/>
 
             <Button
                 android:id="@+id/btn_rechazar"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="6dp"
                 android:text="RECHAZAR"
                 android:backgroundTint="#D32F2F"
                 android:textColor="@android:color/white"
                 android:textStyle="bold"
-                android:padding="12dp"
-                app:cornerRadius="10dp"/>
+                android:padding="10dp"/>
         </LinearLayout>
     </LinearLayout>
 </androidx.cardview.widget.CardView>

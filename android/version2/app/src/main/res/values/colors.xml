@@ -33,4 +33,17 @@
 
     <color name="defaultCardColor">#FFFFFF</color>
 
+
+    <!-- Colores para las notificaciones normales -->
+    <color name="card_normal_background">#B2DFDB</color>
+    <color name="button_accept">#00695C</color>
+    <color name="button_reject">#D32F2F</color>
+
+    <!-- Colores para advertencia de stock -->
+    <color name="card_warning_background">#FFCDD2</color>
+    <color name="button_disabled">#BDBDBD</color>
+    <color name="button_reject_warning">#F44336</color>
+    <color name="warning_text">#D32F2F</color>
+    <color name="warning_background">#FFEBEE</color>
+
 </resources>
