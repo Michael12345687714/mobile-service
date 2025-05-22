@@ -110,14 +110,26 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         private const val PROVIDER_ICON_SIZE_DP = 40
     }
 
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_home)
-        initViews()
-        setupServicesSection()
+
+        // Inicializaciones FIREBASE
         auth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+
+        val stockCounterText = findViewById<TextView>(R.id.stock_counter)
+
+
+        cargarStockDisponible(stockCounterText)
+
+        initViews()
+        setupServicesSection()
+
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
     }
@@ -244,8 +256,29 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+    private fun cargarStockDisponible(stockCounterText: TextView) {
+        val currentUser = auth.currentUser ?: return
+        val proveedorId = currentUser.uid
+
+        db.collection("userServices")
+            .document(proveedorId)
+            .collection("register_stock")
+            .get()
+            .addOnSuccessListener { documents ->
+                var stockTotal = 0
+                for (doc in documents) {
+                    val cantidad = doc.getLong("cant_stock")?.toInt() ?: 0
+                    stockTotal += cantidad
+                }
+                stockCounterText.text = stockTotal.toString()
+            }
+            .addOnFailureListener {
+                stockCounterText.text = "Error"
+            }
+    }
+
+
     private fun cargarNotificaciones() {
-        // Mostrar indicador de carga
         mostrarCargando()
 
         val currentUser = auth.currentUser
@@ -375,17 +408,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             }
         }
 
-        //val closeButton = noNotificacionesView.findViewById<TextView>(R.id.close_button)
-//        closeButton?.setOnClickListener {
-//            notificacionesContainer.animate()
-//                .alpha(0f)
-//                .setDuration(300)
-//                .withEndAction {
-//                    notificacionesContainer.visibility = View.GONE
-//                }
-//                .start()
-//        }
-
 
         contenedorNotificaciones.addView(noNotificacionesView)
 
@@ -411,14 +433,24 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
-    // Método para mostrar las notificaciones
+
     private fun mostrarNotificaciones() {
         // Limpiar el contenedor
         contenedorNotificaciones.removeAllViews()
+
         for (notificacion in notificacionesList) {
             val notificacionView = crearVistaNotificacion(notificacion)
             contenedorNotificaciones.addView(notificacionView)
         }
+
+        // Agregar una vista espaciadora al final
+        val espaciador = View(this)
+        val layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            (170 * resources.displayMetrics.density).toInt() // 50dp en pixels
+        )
+        espaciador.layoutParams = layoutParams
+        contenedorNotificaciones.addView(espaciador)
 
         // Hacer visible el contenedor
         notificacionesContainer.alpha = 0f
@@ -427,10 +459,13 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             .alpha(1f)
             .setDuration(300)
             .start()
+
         actualizarContadorNotificaciones(notificacionesList.size)
     }
 
-    // Método para crear la vista de una notificación individual
+
+
+
     private fun crearVistaNotificacion(notificacion: Notificacion): View {
         // Inflar la vista desde el layout
         val notificacionView = LayoutInflater.from(this).inflate(
@@ -438,15 +473,17 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         )
 
         // Obtener referencias a las vistas
+        val cardView = notificacionView.findViewById<androidx.cardview.widget.CardView>(R.id.card_notificacion)
         val tituloPedido = notificacionView.findViewById<TextView>(R.id.titulo_pedido)
         val cantidadPedido = notificacionView.findViewById<TextView>(R.id.cantidad_pedido)
         val notaPedido = notificacionView.findViewById<TextView>(R.id.nota_pedido)
         val clientePedido = notificacionView.findViewById<TextView>(R.id.cliente_pedido)
         val fechaPedido = notificacionView.findViewById<TextView>(R.id.fecha_pedido)
+        val stockWarning = notificacionView.findViewById<TextView>(R.id.stock_warning)
         val btnAceptar = notificacionView.findViewById<Button>(R.id.btn_aceptar)
         val btnRechazar = notificacionView.findViewById<Button>(R.id.btn_rechazar)
 
-        // Configurar los datos
+        // Configurar los datos básicos
         tituloPedido.text = "📍 Pedido # ${notificacion.id.take(8)}"
         cantidadPedido.text = " ${notificacion.cantidad}"
         notaPedido.text = " ${notificacion.nota}"
@@ -461,7 +498,115 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         }
         fechaPedido.text = "$fechaHora"
 
-        // Configurar los botones
+        verificarStockYConfigurarVista(notificacion, cardView, stockWarning, btnAceptar, btnRechazar)
+
+        val stockCounterText = findViewById<TextView>(R.id.stock_counter)
+        cargarStockDisponible(stockCounterText)
+
+        return notificacionView
+    }
+
+    // Método para verificar stock y configurar la vista según disponibilidad
+
+    private fun verificarStockYConfigurarVista(
+        notificacion: Notificacion,
+        cardView: androidx.cardview.widget.CardView,
+        stockWarning: TextView,
+        btnAceptar: Button,
+        btnRechazar: Button
+    ) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) return
+
+        val proveedorId = currentUser.uid
+
+        db.collection("userServices")
+            .document(proveedorId)
+            .collection("register_stock")
+            .get()
+            .addOnSuccessListener { documents ->
+                var stockDisponible = 0
+
+                for (document in documents) {
+                    val cantStock = document.getLong("cant_stock")?.toInt() ?: 0
+                    stockDisponible += cantStock
+                }
+
+                if (stockDisponible < notificacion.cantidad) {
+                    configurarVistaStockInsuficiente(
+                        cardView, stockWarning, btnAceptar, btnRechazar,
+                        stockDisponible, notificacion.cantidad, notificacion
+                    )
+                } else {
+                    configurarVistaNormal(
+                        cardView, stockWarning, btnAceptar, btnRechazar, notificacion
+                    )
+                }
+            }
+            .addOnFailureListener { e ->
+                configurarVistaStockInsuficiente(
+                    cardView, stockWarning, btnAceptar, btnRechazar,
+                    0, notificacion.cantidad, notificacion
+                )
+            }
+    }
+
+    // Configurar vista cuando no hay suficiente stock
+    private fun configurarVistaStockInsuficiente(
+        cardView: androidx.cardview.widget.CardView,
+        stockWarning: TextView,
+        btnAceptar: Button,
+        btnRechazar: Button,
+        stockDisponible: Int,
+        cantidadSolicitada: Int,
+        notificacion: Notificacion
+    ) {
+        // Cambiar color de fondo a rojo de advertencia
+        cardView.setCardBackgroundColor(ContextCompat.getColor(this, R.color.card_warning_background))
+
+        // Mostrar mensaje de advertencia
+        stockWarning.visibility = View.VISIBLE
+        stockWarning.text = "⚠️ STOCK INSUFICIENTE\nDisponible: $stockDisponible | Solicitado: $cantidadSolicitada"
+
+        // Deshabilitar botón aceptar
+        btnAceptar.isEnabled = false
+        btnAceptar.setBackgroundColor(ContextCompat.getColor(this, R.color.button_disabled))
+        btnAceptar.text = "SIN STOCK"
+
+        // Mantener botón rechazar habilitado pero con color de advertencia
+        btnRechazar.isEnabled = true
+        btnRechazar.setBackgroundColor(ContextCompat.getColor(this, R.color.button_reject_warning))
+        btnRechazar.text = "RECHAZAR"
+
+        // Configurar solo el listener de rechazar
+        btnRechazar.setOnClickListener {
+            actualizarEstadoNotificacion(notificacion.id, "rechazado")
+        }
+    }
+
+    // Configurar vista normal cuando hay suficiente stock
+    private fun configurarVistaNormal(
+        cardView: androidx.cardview.widget.CardView,
+        stockWarning: TextView,
+        btnAceptar: Button,
+        btnRechazar: Button,
+        notificacion: Notificacion
+    ) {
+        // Color normal de la tarjeta
+        cardView.setCardBackgroundColor(ContextCompat.getColor(this, R.color.card_normal_background))
+
+
+        stockWarning.visibility = View.GONE
+
+        btnAceptar.isEnabled = true
+        btnAceptar.setBackgroundColor(ContextCompat.getColor(this, R.color.button_accept))
+        btnAceptar.text = "ACEPTAR"
+
+        btnRechazar.isEnabled = true
+        btnRechazar.setBackgroundColor(ContextCompat.getColor(this, R.color.button_reject))
+        btnRechazar.text = "RECHAZAR"
+
+        // Configurar ambos listeners
         btnAceptar.setOnClickListener {
             actualizarEstadoNotificacion(notificacion.id, "aceptado")
         }
@@ -469,19 +614,87 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         btnRechazar.setOnClickListener {
             actualizarEstadoNotificacion(notificacion.id, "rechazado")
         }
-
-        return notificacionView
     }
 
-    // Método para actualizar el estado de una notificación
+
     private fun actualizarEstadoNotificacion(notificacionId: String, nuevoEstado: String) {
-        // Mostrar un diálogo de progreso
+        if (nuevoEstado == "aceptado") {
+            verificarStockAntesDeAceptar(notificacionId)
+            return
+        }
+
+        // Para rechazos o estados que no sean "aceptado"
+        db.collection("notificaciones").document(notificacionId)
+            .update("estado", nuevoEstado)
+            .addOnSuccessListener {
+                // Actualiza el stock en la UI después de cambiar el estado
+                val stockCounterText = findViewById<TextView>(R.id.stock_counter)
+                cargarStockDisponible(stockCounterText)
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Error al actualizar estado", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+
+    // Verificar stock antes de aceptar definitivamente
+    private fun verificarStockAntesDeAceptar(notificacionId: String) {
+        val notificacion = notificacionesList.find { it.id == notificacionId }
+        if (notificacion == null) return
+
+        val currentUser = auth.currentUser
+        if (currentUser == null) return
+
+        val proveedorId = currentUser.uid
+
+        // Mostrar diálogo de progreso
+        val progressDialog = ProgressDialog(this)
+        progressDialog.setMessage("Verificando stock...")
+        progressDialog.setCancelable(false)
+        progressDialog.show()
+
+        db.collection("userServices")
+            .document(proveedorId)
+            .collection("register_stock")
+            .get()
+            .addOnSuccessListener { documents ->
+                var stockDisponible = 0
+
+                for (document in documents) {
+                    val cantStock = document.getLong("cant_stock")?.toInt() ?: 0
+                    stockDisponible += cantStock
+                }
+
+                progressDialog.dismiss()
+
+                if (stockDisponible >= notificacion.cantidad) {
+                    // Stock suficiente, proceder con la aceptación
+                    procesarActualizacionEstado(notificacionId, "aceptado")
+                } else {
+                    // Stock insuficiente, mostrar error y recargar vista
+                    Toast.makeText(
+                        this,
+                        "Stock insuficiente. Disponible: $stockDisponible, Solicitado: ${notificacion.cantidad}",
+                        Toast.LENGTH_LONG
+                    ).show()
+
+                    // Recargar las notificaciones para actualizar la vista
+                    cargarNotificaciones()
+                }
+            }
+            .addOnFailureListener { e ->
+                progressDialog.dismiss()
+                Toast.makeText(this, "Error al verificar stock: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    // Procesar la actualización del estado (método original modificado)
+    private fun procesarActualizacionEstado(notificacionId: String, nuevoEstado: String) {
         val progressDialog = ProgressDialog(this)
         progressDialog.setMessage("Procesando...")
         progressDialog.setCancelable(false)
         progressDialog.show()
 
-        // Obtener el usuario actual para identificar la colección correcta
         val currentUser = auth.currentUser
         if (currentUser == null) {
             progressDialog.dismiss()
@@ -491,7 +704,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
         val proveedorId = currentUser.uid
 
-        // Actualizar el estado en Firebase - asegurarse de usar la ruta correcta
+        // Actualizar el estado en Firebase
         db.collection("userServices")
             .document(proveedorId)
             .collection("orders")
@@ -504,16 +717,13 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                     notificacionesList.removeAt(index)
                 }
 
-                // Cerrar el diálogo de progreso
                 progressDialog.dismiss()
 
-                // Mostrar mensaje de confirmación
                 Toast.makeText(
                     this,
                     "Pedido ${if (nuevoEstado == "aceptado") "aceptado" else "rechazado"} correctamente",
                     Toast.LENGTH_SHORT
                 ).show()
-
 
                 if (notificacionesList.isEmpty()) {
                     mostrarNoNotificaciones()
@@ -522,10 +732,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                 }
             }
             .addOnFailureListener { e ->
-                // Cerrar el diálogo de progreso
                 progressDialog.dismiss()
-
-                // Mostrar mensaje de error
                 Toast.makeText(
                     this,
                     "Error al actualizar: ${e.message}",
@@ -533,6 +740,9 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                 ).show()
             }
     }
+
+
+
 
     // Método para actualizar el contador visual de notificaciones
     private fun actualizarContadorNotificaciones(count: Int) {
@@ -543,11 +753,11 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             notificationButton.setColorFilter(Color.GRAY)
         }
 
-        // Aquí  un contador visual con el número de notificaciones
+        // un contador visual con el  de notificaciones
 
     }
 
-    // Añade este método para ser llamado en el onResume() de la actividad
+
 // para actualizar las notificaciones cuando el usuario vuelve a la app
     override fun onResume() {
         super.onResume()
