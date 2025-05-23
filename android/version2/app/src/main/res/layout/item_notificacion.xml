@@ -172,6 +172,22 @@
                 android:textColor="@android:color/white"
                 android:textStyle="bold"
                 android:padding="10dp"/>
+
+            <Space
+                android:layout_width="9dp"
+                android:layout_height="wrap_content"/>
+
+            <Button
+                android:id="@+id/btn_ver_ruta"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:text="VER RUTA"
+                android:textColor="@android:color/white"
+                android:textStyle="bold"
+                android:padding="10dp"
+                style="?attr/materialButtonStyle"/>
         </LinearLayout>
     </LinearLayout>
 </androidx.cardview.widget.CardView>

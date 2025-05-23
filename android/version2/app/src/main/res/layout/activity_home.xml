@@ -109,7 +109,6 @@
             </com.google.android.material.card.MaterialCardView>
 
 
-
             <!-- Fragmento de notificaciones dinámicas  -->
 
             <androidx.constraintlayout.widget.ConstraintLayout
@@ -403,7 +402,7 @@
                         android:layout_height="48dp"
                         android:src="@drawable/ic_garbage_truck"
                         android:layout_marginBottom="4dp"
-                       />
+                        />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -440,7 +439,7 @@
     <!-- Drawer lateral -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/drawerFragmentContainer"
-      
+
         android:layout_width="300dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
