@@ -100,6 +100,10 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var contenedorNotificaciones: LinearLayout
     private val notificacionesList = mutableListOf<Notificacion>()
 
+
+
+
+
     // clase para manejar los datos de notificaciones
     data class Notificacion(
         val id: String = "",
@@ -126,11 +130,11 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_home)
-
         // Inicializaciones FIREBASE
         auth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
 
         val retrofit = Retrofit.Builder()
             .baseUrl(GOOGLE_MAPS_API_BASE_URL)
@@ -148,6 +152,9 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
+
+
+
     }
 
 
@@ -309,7 +316,8 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         db.collection("userServices")
             .document(proveedorId)
             .collection("orders")
-            .whereEqualTo("estado", "pendiente")
+            //.whereEqualTo("estado", "pendiente")
+            .whereIn("estado", listOf("pendiente", "finalizar"))
             .get()
             .addOnSuccessListener { documents ->
 
@@ -450,12 +458,20 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
 
+
+    // Función modificada que verifica el estado y llama a la función correspondiente
     private fun mostrarNotificaciones() {
         // Limpiar el contenedor
         contenedorNotificaciones.removeAllViews()
 
         for (notificacion in notificacionesList) {
-            val notificacionView = crearVistaNotificacion(notificacion)
+            val notificacionView = if (notificacion.estado == "finalizar") {
+                // Si el estado es aceptado, usar la vista con botón "Finalizar"
+                crearVistaNotificacionFinalizar(notificacion)
+            } else {
+                // Para otros estados, usar la vista normal
+                crearVistaNotificacion(notificacion)
+            }
             contenedorNotificaciones.addView(notificacionView)
         }
 
@@ -463,7 +479,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         val espaciador = View(this)
         val layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
-            (170 * resources.displayMetrics.density).toInt() // 50dp en pixels
+            (170 * resources.displayMetrics.density).toInt() // 170dp en pixels
         )
         espaciador.layoutParams = layoutParams
         contenedorNotificaciones.addView(espaciador)
@@ -479,9 +495,71 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         actualizarContadorNotificaciones(notificacionesList.size)
     }
 
+    // Nueva función para crear vista de notificación con botón "Finalizar"
+    private fun crearVistaNotificacionFinalizar(notificacion: Notificacion): View {
+        // Inflar la vista desde el layout
+        val notificacionView = LayoutInflater.from(this).inflate(
+            R.layout.item_notificacion, contenedorNotificaciones, false
+        )
 
+        // Obtener referencias a las vistas
+        val cardView = notificacionView.findViewById<androidx.cardview.widget.CardView>(R.id.card_notificacion)
+        val tituloPedido = notificacionView.findViewById<TextView>(R.id.titulo_pedido)
+        val cantidadPedido = notificacionView.findViewById<TextView>(R.id.cantidad_pedido)
+        val notaPedido = notificacionView.findViewById<TextView>(R.id.nota_pedido)
+        val clientePedido = notificacionView.findViewById<TextView>(R.id.cliente_pedido)
+        val fechaPedido = notificacionView.findViewById<TextView>(R.id.fecha_pedido)
+        val stockWarning = notificacionView.findViewById<TextView>(R.id.stock_warning)
+        val btnAceptar = notificacionView.findViewById<Button>(R.id.btn_aceptar)
+        val btnRechazar = notificacionView.findViewById<Button>(R.id.btn_rechazar)
+        val btnVerRuta = notificacionView.findViewById<Button>(R.id.btn_ver_ruta)
 
+        // Configurar los datos básicos
+        tituloPedido.text = "📍 Pedido # ${notificacion.id.take(8)}"
+        cantidadPedido.text = " ${notificacion.cantidad}"
+        notaPedido.text = " ${notificacion.nota}"
+        clientePedido.text = "${notificacion.nombreCliente}"
 
+        // Formatear fecha y hora
+        val fechaHora = if (notificacion.timestamp != null) {
+            val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+            dateFormat.format(notificacion.timestamp.toDate())
+        } else {
+            "Fecha no disponible"
+        }
+        fechaPedido.text = "$fechaHora"
+
+        // Ocultar el warning de stock ya que el pedido fue aceptado
+        stockWarning.visibility = View.GONE
+
+        // Cambiar el texto del botón "Aceptar" a "Finalizar"
+        btnAceptar.text = "Finalizar"
+        btnAceptar.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
+
+        // Ocultar el botón "Rechazar" ya que el pedido ya fue aceptado
+        btnRechazar.visibility = View.GONE
+
+        val stockCounterText = findViewById<TextView>(R.id.stock_counter)
+        cargarStockDisponible(stockCounterText)
+
+        // Configurar el botón "Finalizar"
+        btnAceptar.setOnClickListener {
+            actualizarEstadoNotificacion(notificacion.id, "finalizado")
+        }
+
+        // Configurar el botón "Ver Ruta"
+        btnVerRuta.setOnClickListener {
+            notificacion.ubicacionCliente?.let { clientLocation ->
+                mostrarRuta(LatLng(clientLocation["latitude"]!!, clientLocation["longitude"]!!))
+            } ?: run {
+                Toast.makeText(this@HomeActivity, "Ubicación del cliente no disponible", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        return notificacionView
+    }
+
+    // Tu función original se mantiene igual para otros estados
     private fun crearVistaNotificacion(notificacion: Notificacion): View {
         // Inflar la vista desde el layout
         val notificacionView = LayoutInflater.from(this).inflate(
@@ -498,7 +576,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         val stockWarning = notificacionView.findViewById<TextView>(R.id.stock_warning)
         val btnAceptar = notificacionView.findViewById<Button>(R.id.btn_aceptar)
         val btnRechazar = notificacionView.findViewById<Button>(R.id.btn_rechazar)
-        val btnVerRuta = notificacionView.findViewById<Button>(R.id.btn_ver_ruta) // Get the new button
+        val btnVerRuta = notificacionView.findViewById<Button>(R.id.btn_ver_ruta)
 
         // Configurar los datos básicos
         tituloPedido.text = "📍 Pedido # ${notificacion.id.take(8)}"
@@ -529,7 +607,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             actualizarEstadoNotificacion(notificacion.id, "rechazado")
         }
 
-        // Set listener for the "Ver Ruta" button
+        // Configurar el botón "Ver Ruta"
         btnVerRuta.setOnClickListener {
             notificacion.ubicacionCliente?.let { clientLocation ->
                 mostrarRuta(LatLng(clientLocation["latitude"]!!, clientLocation["longitude"]!!))
@@ -537,8 +615,16 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                 Toast.makeText(this@HomeActivity, "Ubicación del cliente no disponible", Toast.LENGTH_SHORT).show()
             }
         }
+
         return notificacionView
     }
+
+
+
+
+
+
+
     private fun mostrarRuta(destination: LatLng) {
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -713,6 +799,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     // Configurar vista normal cuando hay suficiente stock
+
     private fun configurarVistaNormal(
         cardView: androidx.cardview.widget.CardView,
         stockWarning: TextView,
@@ -722,7 +809,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     ) {
         // Color normal de la tarjeta
         cardView.setCardBackgroundColor(ContextCompat.getColor(this, R.color.card_normal_background))
-
 
         stockWarning.visibility = View.GONE
 
@@ -745,54 +831,148 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
 
+
+
+
+//    private fun actualizarEstadoNotificacion(notificacionId: String, nuevoEstado: String) {
+//        if (nuevoEstado == "aceptado") {
+//            verificarStockAntesDeAceptar(notificacionId)
+//            return
+//        }
+//
+//        // Para rechazos y otros estados
+//        val currentUser = auth.currentUser
+//        if (currentUser == null) {
+//            Toast.makeText(this, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
+//            return
+//        }
+//
+//        val proveedorId = currentUser.uid
+//
+//        // Usar la misma estructura que procesarActualizacionEstado
+//        db.collection("userServices")
+//            .document(proveedorId)
+//            .collection("orders")
+//            .document(notificacionId)
+//            .update("estado", nuevoEstado)
+//            .addOnSuccessListener {
+//                // Eliminar la notificación de la lista local
+//                val index = notificacionesList.indexOfFirst { it.id == notificacionId }
+//                if (index != -1) {
+//                    val notificacion = notificacionesList.removeAt(index)
+//
+//                    // Solo mostrar ruta si fue aceptado
+//                    if (nuevoEstado == "aceptado") {
+//                        notificacion.ubicacionCliente?.let { clientLocation ->
+//                            val clienteLatLng = LatLng(clientLocation["latitude"]!!, clientLocation["longitude"]!!)
+//                            mostrarRuta(clienteLatLng)
+//                        }
+//                    }
+//                }
+//
+//                // Cerrar la ventana de notificaciones
+//                notificacionesContainer.animate()
+//                    .alpha(0f)
+//                    .setDuration(300)
+//                    .withEndAction {
+//                        notificacionesContainer.visibility = View.GONE
+//                    }
+//                    .start()
+//
+//                // Mostrar mensaje de confirmación según el estado
+//                val mensaje = when (nuevoEstado) {
+//                    "aceptado" -> "Pedido aceptado correctamente"
+//                    "rechazado" -> "Pedido rechazado"
+//                    "finalizado" -> "Pedido finalizado correctamente"
+//                    else -> "Estado actualizado"
+//                }
+//
+//                Toast.makeText(this, mensaje, Toast.LENGTH_SHORT).show()
+//
+//                if (notificacionesList.isEmpty()) {
+//                    mostrarNoNotificaciones()
+//                } else {
+//                    mostrarNotificaciones()
+//                }
+//            }
+//            .addOnFailureListener { e ->
+//                Toast.makeText(this, "Error al actualizar estado: ${e.message}", Toast.LENGTH_SHORT).show()
+//            }
+//    }
+
+
     private fun actualizarEstadoNotificacion(notificacionId: String, nuevoEstado: String) {
         if (nuevoEstado == "aceptado") {
             verificarStockAntesDeAceptar(notificacionId)
             return
         }
 
-        // Para rechazos o estados que no sean "aceptado"
-        db.collection("notificaciones").document(notificacionId)
-            .update("estado", nuevoEstado)
+        // Para rechazos y otros estados
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            Toast.makeText(this, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
+            return
+        }
 
+        val proveedorId = currentUser.uid
+
+        // Mostrar diálogo de progreso
+        val progressDialog = ProgressDialog(this).apply {
+            setMessage("Actualizando estado...")
+            setCancelable(false)
+            show()
+        }
+
+        db.collection("userServices")
+            .document(proveedorId)
+            .collection("orders")
+            .document(notificacionId)
+            .update("estado", nuevoEstado)
             .addOnSuccessListener {
-                // Eliminar la notificación de la lista
+                progressDialog.dismiss()
+
+                // Encontrar y actualizar la notificación en la lista
                 val index = notificacionesList.indexOfFirst { it.id == notificacionId }
                 if (index != -1) {
-                    val notificacionAceptada = notificacionesList.removeAt(index)
-                    // Si se aceptó, mostrar la ruta
-                    notificacionAceptada.ubicacionCliente?.let { clientLocation ->
-                        val clienteLatLng = LatLng(clientLocation["latitude"]!!, clientLocation["longitude"]!!)
-                        mostrarRuta(clienteLatLng)
+                    val notificacion = notificacionesList[index]
+
+                    // Actualizar el estado en la lista local
+                    notificacionesList[index] = notificacion.copy(estado = nuevoEstado)
+
+                    // Si el nuevo estado es "finalizar", actualizar la vista específicamente
+                    if (nuevoEstado == "finalizar") {
+                        // Reemplazar la vista existente con la nueva vista de "finalizar"
+                        contenedorNotificaciones.removeViewAt(index)
+                        val nuevaVista = crearVistaNotificacionFinalizar(notificacionesList[index])
+                        contenedorNotificaciones.addView(nuevaVista, index)
+
+                        // Mostrar mensaje de confirmación
+                        Toast.makeText(this, "Pedido marcado para finalizar", Toast.LENGTH_SHORT).show()
+                    } else {
+                        // Para otros estados, recargar todas las notificaciones
+                        cargarNotificaciones()
                     }
                 }
 
-                // Cerrar la ventana de notificaciones
-                notificacionesContainer.animate()
-                    .alpha(0f)
-                    .setDuration(300)
-                    .withEndAction {
-                        notificacionesContainer.visibility = View.GONE
-                    }
-                    .start()
-
-                // Mostrar mensaje de confirmación
-                Toast.makeText(
-                    this,
-                    "Pedido aceptado correctamente",
-                    Toast.LENGTH_SHORT
-                ).show()
-
-                if (notificacionesList.isEmpty()) {
-                    mostrarNoNotificaciones()
-                } else {
-                    mostrarNotificaciones()
+                // Mostrar mensaje según el estado
+                val mensaje = when (nuevoEstado) {
+                    "aceptado" -> "Pedido aceptado correctamente"
+                    "rechazado" -> "Pedido rechazado"
+                    "finalizado" -> "Pedido finalizado correctamente"
+                    else -> "Estado actualizado"
                 }
+
+                Toast.makeText(this, mensaje, Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { e ->
-                Toast.makeText(this, "Error al actualizar estado", Toast.LENGTH_SHORT).show()
+                progressDialog.dismiss()
+                Toast.makeText(this, "Error al actualizar estado: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
+
+
+
+
 
 
     // Verificar stock antes de aceptar definitivamente
@@ -846,7 +1026,8 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             }
     }
 
-    // Procesar la actualización del estado (método original modificado)
+
+
     private fun procesarActualizacionEstado(notificacionId: String, nuevoEstado: String) {
         val progressDialog = ProgressDialog(this)
         progressDialog.setMessage("Procesando...")
@@ -862,12 +1043,182 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
         val proveedorId = currentUser.uid
 
-        // Actualizar el estado en Firebase
+        // Primero obtener información del pedido para conocer el clienteId y la cantidad
         db.collection("userServices")
             .document(proveedorId)
             .collection("orders")
             .document(notificacionId)
-            .update("estado", nuevoEstado)
+            .get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val clienteId = document.getString("clienteId")
+                    val cantidadPedida = document.getLong("cantidad")?.toInt() ?: 0
+
+                    if (clienteId != null) {
+                        // Si el estado es "aceptado", también actualizar el stock
+                        if (nuevoEstado == "aceptado") {
+                            actualizarEstadoYStock(proveedorId, clienteId, notificacionId, nuevoEstado, cantidadPedida, progressDialog)
+                        } else {
+                            // Si es rechazar o finalizar, no actualizar stock
+                            actualizarSoloEstado(proveedorId, clienteId, notificacionId, nuevoEstado, progressDialog)
+                        }
+                    } else {
+                        progressDialog.dismiss()
+                        Toast.makeText(this, "Error: No se encontró el ID del cliente", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    progressDialog.dismiss()
+                    Toast.makeText(this, "Error: Pedido no encontrado", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .addOnFailureListener { e ->
+                progressDialog.dismiss()
+                Toast.makeText(
+                    this,
+                    "Error al obtener información del pedido: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+    }
+
+
+
+
+
+
+
+    private fun actualizarEstadoYStock(
+        proveedorId: String,
+        clienteId: String,
+        notificacionId: String,
+        nuevoEstado: String,
+        cantidadPedida: Int,
+        progressDialog: ProgressDialog
+    ) {
+        // Primero obtener el stock actual
+        db.collection("userServices").document(proveedorId)
+            .collection("register_stock")
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                if (!querySnapshot.isEmpty) {
+                    val stockDoc = querySnapshot.documents[0]
+                    val stockDocId = stockDoc.id
+                    val stockActual = stockDoc.getLong("cant_stock")?.toInt() ?: 0
+
+                    // Verificar que hay suficiente stock
+                    if (stockActual >= cantidadPedida) {
+                        val nuevoStock = stockActual - cantidadPedida
+
+                        // Usar batch para actualizar todo de forma atómica
+                        val batch = db.batch()
+
+                        // Referencias para orders
+                        val userServiceRef = db.collection("userServices")
+                            .document(proveedorId)
+                            .collection("orders")
+                            .document(notificacionId)
+
+                        val userClientRef = db.collection("userClients")
+                            .document(clienteId)
+                            .collection("orders")
+                            .document(notificacionId)
+
+                        // Referencia para stock
+                        val stockRef = db.collection("userServices")
+                            .document(proveedorId)
+                            .collection("register_stock")
+                            .document(stockDocId)
+
+                        // Actualizar estado en ambas colecciones de orders
+                        batch.update(userServiceRef, "estado", "finalizar")
+                        batch.update(userClientRef, "estado", nuevoEstado)
+
+                        // Actualizar stock
+                        batch.update(stockRef, "cant_stock", nuevoStock)
+
+                        // Ejecutar el batch
+                        batch.commit()
+                            .addOnSuccessListener {
+                                // Eliminar la notificación de la lista
+                                val index = notificacionesList.indexOfFirst { it.id == notificacionId }
+                                if (index != -1) {
+                                    val notificacion = notificacionesList[index] // Guarda una copia
+                                    notificacionesList.removeAt(index)
+
+                                    // Quitar la vista actual si la tienes en un ViewGroup
+                                    contenedorNotificaciones.removeViewAt(index)
+
+                                    // Crear la vista finalizada y agregarla al contenedor
+                                    val vistaFinal = crearVistaNotificacionFinalizar(notificacion)
+                                    contenedorNotificaciones.addView(vistaFinal, index) // Insertarla en la misma posición
+                                }
+
+
+                                progressDialog.dismiss()
+
+                                Toast.makeText(
+                                    this,
+                                    "Pedido aceptado y stock actualizado correctamente",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+
+                                // Llamar a crearVistaNotificacionFinalizar
+
+
+                                if (notificacionesList.isEmpty()) {
+                                    mostrarNoNotificaciones()
+                                } else {
+                                    mostrarNotificaciones()
+                                }
+                            }
+
+                    } else {
+                        progressDialog.dismiss()
+                        Toast.makeText(
+                            this,
+                            "Error: Stock insuficiente. Stock actual: $stockActual, Cantidad pedida: $cantidadPedida",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                } else {
+                    progressDialog.dismiss()
+                    Toast.makeText(this, "Error: No se encontró el documento de stock", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .addOnFailureListener { e ->
+                progressDialog.dismiss()
+                Toast.makeText(this, "Error al acceder al stock: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun actualizarSoloEstado(
+        proveedorId: String,
+        clienteId: String,
+        notificacionId: String,
+        nuevoEstado: String,
+        progressDialog: ProgressDialog
+    ) {
+        // Usar batch para actualizar ambas colecciones de forma atómica
+        val batch = db.batch()
+
+        // Referencia para userServices
+        val userServiceRef = db.collection("userServices")
+            .document(proveedorId)
+            .collection("orders")
+            .document(notificacionId)
+
+        // Referencia para userClients
+        val userClientRef = db.collection("userClients")
+            .document(clienteId)
+            .collection("orders")
+            .document(notificacionId)
+
+        // Actualizar estado en ambas colecciones
+        batch.update(userServiceRef, "estado", nuevoEstado)
+        batch.update(userClientRef, "estado", nuevoEstado)
+
+        // Ejecutar el batch
+        batch.commit()
             .addOnSuccessListener {
                 // Eliminar la notificación de la lista
                 val index = notificacionesList.indexOfFirst { it.id == notificacionId }
@@ -1192,11 +1543,13 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+
+
     private fun enableMyLocation() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             == PackageManager.PERMISSION_GRANTED) {
 
-            mMap.isMyLocationEnabled = true // Habilitamos el botón azul predeterminado de Google Maps
+            // mMap.isMyLocationEnabled = true // Habilitamos el botón azul predeterminado de Google Maps
 
             val uid = auth.currentUser?.uid
 
@@ -1208,6 +1561,9 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                             // Es Cliente
                             currentUserType = clientDoc.getString("userType")
                             iniciarActualizacionUbicacion()
+                            // Ocultar botón de stock para clientes
+                            updateStockButtonVisibility(false)
+
                         } else {
                             // No está en userClients, buscar en userServices
                             db.collection("userServices").document(it).get()
@@ -1217,6 +1573,8 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                                         // Si es servicio, necesitamos obtener el tipo de servicio para mostrar el ícono correcto
                                         currentServiceType = serviceDoc.getString("serviceType")
                                         iniciarActualizacionUbicacion()
+                                        // Mostrar botón de stock para servicios
+                                        updateStockButtonVisibility(true)
                                     }
                                 }
                         }
@@ -1224,6 +1582,13 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             }
         }
     }
+
+    private fun updateStockButtonVisibility(isService: Boolean) {
+        val drawerFragment = supportFragmentManager.findFragmentById(R.id.drawerFragmentContainer) as? UserDrawerFragment
+        drawerFragment?.setStockButtonVisibility(isService)
+    }
+
+
 
     // Esta es una función separada para iniciar la ubicación una vez que ya sabemos el tipo de usuario
     private fun iniciarActualizacionUbicacion() {
@@ -1264,6 +1629,8 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                     listenToServiceProviders()
                 } else {
                     // Si es Servicio, mostrar con ícono personalizado según su tipo
+
+
                     val serviceIcon = getServiceIcon(currentServiceType)
                     currentUserMarker = mMap.addMarker(
                         MarkerOptions()

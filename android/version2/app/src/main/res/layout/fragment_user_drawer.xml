@@ -5,11 +5,12 @@
     android:layout_height="match_parent"
     android:background="#FFFFFF"
     android:padding="16dp"
-
     android:gravity="center_horizontal">
+
     <View
         android:layout_width="match_parent"
         android:layout_height="36dp" />
+
     <ImageView
         android:id="@+id/profileImageView"
         android:layout_width="100dp"
@@ -72,6 +73,16 @@
         android:text="Ver pedidos"
         android:layout_marginTop="8dp"
         android:textColor="#FFFFFF"/>
+
+    <Button
+        android:id="@+id/stockButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Control de Stock"
+        android:layout_marginTop="8dp"
+        android:backgroundTint="#3498DB"
+        android:textColor="#FFFFFF"
+        android:visibility="gone"/>
 
     <Button
         android:id="@+id/editProfileButton"

@@ -24,6 +24,7 @@
         <activity android:name=".usersAccounts.EditarPerfilActivity" android:exported="false"/>
         <activity android:name=".OrderActivity" android:exported="false"/>
         <activity android:name=".viewOrders.ViewOrdersActivity" android:exported="false"/>
+        <activity android:name=".StockActivity" android:exported="false"/>
         <activity
             android:name=".MainActivity"
             android:exported="true">
