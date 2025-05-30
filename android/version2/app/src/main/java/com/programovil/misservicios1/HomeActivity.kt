@@ -53,7 +53,18 @@ import android.widget.*
 import android.view.ViewGroup
 import java.text.SimpleDateFormat
 import java.util.Locale
+import com.google.android.gms.maps.model.LatLngBounds
+import com.programovil.misservicios1.DirectionsApiService.DirectionsResponse
 
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import com.google.maps.android.PolyUtil
+import com.google.android.gms.maps.model.PolylineOptions
+
+
+private const val GOOGLE_MAPS_API_BASE_URL = "https://maps.googleapis.com/maps/api/"
+private lateinit var directionsApiService: DirectionsApiService
+private val YOUR_API_KEY = "AIzaSyCARALN5S5FNKPF1WZQQoVPLSzlPk8_tp0"
 
 
 class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
@@ -74,9 +85,9 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var selectionIndicator: View
     private lateinit var servicesSection: ConstraintLayout
     private var currentSelectedCard: CardView? = null
-    private val allServiceMarkers = mutableListOf<Pair<Marker, String>>()
     private lateinit var searchCardView: MaterialCardView
-
+    private var clienteMarker: Marker? = null
+    private val allServiceMarkers = mutableListOf<Triple<Marker, String, String?>>() // Marker, username, serviceType
 
 
 
@@ -121,6 +132,11 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         db = FirebaseFirestore.getInstance()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
+        val retrofit = Retrofit.Builder()
+            .baseUrl(GOOGLE_MAPS_API_BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+        directionsApiService = retrofit.create(DirectionsApiService::class.java)
 
         val stockCounterText = findViewById<TextView>(R.id.stock_counter)
 
@@ -482,6 +498,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         val stockWarning = notificacionView.findViewById<TextView>(R.id.stock_warning)
         val btnAceptar = notificacionView.findViewById<Button>(R.id.btn_aceptar)
         val btnRechazar = notificacionView.findViewById<Button>(R.id.btn_rechazar)
+        val btnVerRuta = notificacionView.findViewById<Button>(R.id.btn_ver_ruta) // Get the new button
 
         // Configurar los datos básicos
         tituloPedido.text = "📍 Pedido # ${notificacion.id.take(8)}"
@@ -503,7 +520,118 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         val stockCounterText = findViewById<TextView>(R.id.stock_counter)
         cargarStockDisponible(stockCounterText)
 
+        // Configurar los botones
+        btnAceptar.setOnClickListener {
+            actualizarEstadoNotificacion(notificacion.id, "aceptado")
+        }
+
+        btnRechazar.setOnClickListener {
+            actualizarEstadoNotificacion(notificacion.id, "rechazado")
+        }
+
+        // Set listener for the "Ver Ruta" button
+        btnVerRuta.setOnClickListener {
+            notificacion.ubicacionCliente?.let { clientLocation ->
+                mostrarRuta(LatLng(clientLocation["latitude"]!!, clientLocation["longitude"]!!))
+            } ?: run {
+                Toast.makeText(this@HomeActivity, "Ubicación del cliente no disponible", Toast.LENGTH_SHORT).show()
+            }
+        }
         return notificacionView
+    }
+    private fun mostrarRuta(destination: LatLng) {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            Toast.makeText(this, "Permisos de ubicación no concedidos", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            location?.let { currentLoc ->
+                val origin = LatLng(currentLoc.latitude, currentLoc.longitude)
+                drawRoute(origin, destination)
+            } ?: run {
+                Toast.makeText(this, "No se pudo obtener la ubicación actual", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    private fun drawRoute(origin: LatLng, destination: LatLng) {
+        val originStr = "${origin.latitude},${origin.longitude}"
+        val destinationStr = "${destination.latitude},${destination.longitude}"
+
+        directionsApiService.getDirections(originStr, destinationStr, YOUR_API_KEY)
+            .enqueue(object : retrofit2.Callback<DirectionsResponse> {
+                override fun onResponse(
+                    call: retrofit2.Call<DirectionsResponse>,
+                    response: retrofit2.Response<DirectionsResponse>
+                ) {
+                    if (response.isSuccessful) {
+                        val routes = response.body()?.routes
+                        if (!routes.isNullOrEmpty()) {
+                            val points = routes[0].legs[0].steps.flatMap { it.polyline.points.let { p -> PolyUtil.decode(p) } }
+                            val polylineOptions = PolylineOptions()
+                                .addAll(points)
+                                .width(12f)
+                                .color(Color.GREEN)
+                                .geodesic(true)
+
+                            mMap.addPolyline(polylineOptions)
+
+                            // Zoom to fit the route
+                            val builder = LatLngBounds.Builder()
+                            builder.include(origin)
+                            builder.include(destination)
+                            val bounds = builder.build()
+                            val padding = 100 // Padding in pixels
+                            val cameraUpdate = CameraUpdateFactory.newLatLngBounds(bounds, padding)
+                            mMap.animateCamera(cameraUpdate)
+
+                            // Add markers
+                            mMap.addMarker(MarkerOptions().position(origin).title("Tu Ubicación"))
+                            clienteMarker = mMap.addMarker(MarkerOptions().position(destination).title("Ubicación del Cliente")) // Guardamos el marcador del cliente
+
+                        } else {
+                            Toast.makeText(this@HomeActivity, "No se encontraron rutas", Toast.LENGTH_SHORT).show()
+                            val builder = LatLngBounds.Builder()
+                            builder.include(origin)
+                            builder.include(destination)
+                            mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 150))
+                            mMap.addMarker(MarkerOptions().position(origin).title("Tu Ubicación"))
+                            clienteMarker = mMap.addMarker(MarkerOptions().position(destination).title("Ubicación del Cliente")) // Guardamos el marcador del cliente
+                        }
+                    } else {
+                        Toast.makeText(this@HomeActivity, "Error al obtener la ruta: ${response.code()}", Toast.LENGTH_SHORT).show()
+                        val builder = LatLngBounds.Builder()
+                        builder.include(origin)
+                        builder.include(destination)
+                        mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 150))
+                        mMap.addMarker(MarkerOptions().position(origin).title("Tu Ubicación"))
+                        clienteMarker = mMap.addMarker(MarkerOptions().position(destination).title("Ubicación del Cliente")) // Guardamos el marcador del cliente
+                    }
+                }
+
+                override fun onFailure(call: retrofit2.Call<DirectionsResponse>, t: Throwable) {
+                    Toast.makeText(
+                        this@HomeActivity,
+                        "Fallo al obtener la ruta: ${t.localizedMessage}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    val origin = LatLng(origin.latitude, origin.longitude)
+                    val destination = LatLng(destination.latitude, destination.longitude)
+                    val builder = LatLngBounds.Builder()
+                    builder.include(origin)
+                    builder.include(destination)
+                    mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 150))
+                    mMap.addMarker(MarkerOptions().position(origin).title("Tu Ubicación"))
+                    clienteMarker = mMap.addMarker(MarkerOptions().position(destination).title("Ubicación del Cliente")) // Guardamos el marcador del cliente
+                }
+            })
     }
 
     // Método para verificar stock y configurar la vista según disponibilidad
@@ -626,10 +754,40 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         // Para rechazos o estados que no sean "aceptado"
         db.collection("notificaciones").document(notificacionId)
             .update("estado", nuevoEstado)
+
             .addOnSuccessListener {
-                // Actualiza el stock en la UI después de cambiar el estado
-                val stockCounterText = findViewById<TextView>(R.id.stock_counter)
-                cargarStockDisponible(stockCounterText)
+                // Eliminar la notificación de la lista
+                val index = notificacionesList.indexOfFirst { it.id == notificacionId }
+                if (index != -1) {
+                    val notificacionAceptada = notificacionesList.removeAt(index)
+                    // Si se aceptó, mostrar la ruta
+                    notificacionAceptada.ubicacionCliente?.let { clientLocation ->
+                        val clienteLatLng = LatLng(clientLocation["latitude"]!!, clientLocation["longitude"]!!)
+                        mostrarRuta(clienteLatLng)
+                    }
+                }
+
+                // Cerrar la ventana de notificaciones
+                notificacionesContainer.animate()
+                    .alpha(0f)
+                    .setDuration(300)
+                    .withEndAction {
+                        notificacionesContainer.visibility = View.GONE
+                    }
+                    .start()
+
+                // Mostrar mensaje de confirmación
+                Toast.makeText(
+                    this,
+                    "Pedido aceptado correctamente",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                if (notificacionesList.isEmpty()) {
+                    mostrarNoNotificaciones()
+                } else {
+                    mostrarNotificaciones()
+                }
             }
             .addOnFailureListener { e ->
                 Toast.makeText(this, "Error al actualizar estado", Toast.LENGTH_SHORT).show()
@@ -968,12 +1126,58 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         mMap = googleMap
 
         mMap.uiSettings.isCompassEnabled = true
-
         mMap.uiSettings.isRotateGesturesEnabled = true
+
+        mMap.setOnMarkerClickListener { marker ->
+            if (marker == clienteMarker) {
+                clearRoute()
+                return@setOnMarkerClickListener true // Indica que el evento de clic ha sido consumido
+            }
+            // Si no es el marcador del cliente, devuelve false para que se muestre el info window (si lo hay)
+            return@setOnMarkerClickListener false
+        }
 
         checkLocationPermission()
     }
-
+    private fun clearRoute() {
+        mMap.clear()
+        clienteMarker = null
+        // Volver a añadir el marcador de usuario
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED || ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                location?.let { currentLoc ->
+                    val latLng = LatLng(currentLoc.latitude, currentLoc.longitude)
+                    val markerOptions = MarkerOptions().position(latLng).title("Tu ubicación")
+                    if (currentUserType != "Cliente" && currentServiceType != null) {
+                        markerOptions.icon(getServiceIcon(currentServiceType))
+                    }
+                    currentUserMarker = mMap.addMarker(markerOptions)
+                }
+            }
+        } else {
+            Toast.makeText(this, "Permisos de ubicación no concedidos.", Toast.LENGTH_SHORT).show()
+        }
+        // Volver a añadir los marcadores de servicio (si eres cliente)
+        if (currentUserType == "Cliente") {
+            allServiceMarkers.forEach { (marker, _, serviceType) ->
+                marker?.position?.let { pos ->
+                    val serviceMarkerOptions = MarkerOptions()
+                        .position(pos)
+                        .title(marker.title)
+                        .snippet(marker.snippet)
+                        .icon(getServiceIcon(serviceType))
+                    mMap.addMarker(serviceMarkerOptions)
+                }
+            }
+        }
+    }
 
     private fun checkLocationPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -1132,7 +1336,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                                         val acceptOrders = serviceDoc.getString("acceptOrders") ?: "false"
 
                                         if (marker != null) {
-                                            allServiceMarkers.add(Pair(marker, username))
+                                            allServiceMarkers.add(Triple(marker, username, serviceType))
                                             marker.tag = listOf(userId, username, serviceType, acceptOrders)
                                         }
                                     }
