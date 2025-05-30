@@ -128,4 +128,22 @@ class UserDrawerFragment : Fragment() {
 
         return view
     }
+
+
+
+    // Agregar este método a tu UserDrawerFragment
+
+    fun setStockButtonVisibility(isVisible: Boolean) {
+        view?.findViewById<Button>(R.id.stockButton)?.let { stockButton ->
+            stockButton.visibility = if (isVisible) View.VISIBLE else View.GONE
+
+            // Si es visible, configurar el click listener para abrir StockActivity
+            if (isVisible) {
+                stockButton.setOnClickListener {
+                    val intent = Intent(requireContext(), StockActivity::class.java)
+                    startActivity(intent)
+                }
+            }
+        }
+    }
 }
