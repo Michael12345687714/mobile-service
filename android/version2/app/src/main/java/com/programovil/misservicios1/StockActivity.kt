@@ -106,19 +106,16 @@ class StockActivity : AppCompatActivity() {
 
         updateButton.isEnabled = false
 
-        // Accedemos a la subcolección register_stock del usuario
-        db.collection("userServices").document(userId)
-            .collection("register_stock")
-            .get()
+        val stockCollection = db.collection("userServices").document(userId).collection("register_stock")
+
+        stockCollection.get()
             .addOnSuccessListener { querySnapshot ->
                 if (!querySnapshot.isEmpty) {
-                    // Suponemos que solo hay un documento en register_stock
+                    // Documento ya existe, lo actualizamos
                     val stockDoc = querySnapshot.documents[0]
                     val stockDocId = stockDoc.id
 
-                    // Actualizamos el campo cant_stock
-                    db.collection("userServices").document(userId)
-                        .collection("register_stock").document(stockDocId)
+                    stockCollection.document(stockDocId)
                         .update("cant_stock", newQuantity)
                         .addOnSuccessListener {
                             Toast.makeText(this, "Stock actualizado correctamente", Toast.LENGTH_SHORT).show()
@@ -132,8 +129,19 @@ class StockActivity : AppCompatActivity() {
                         }
 
                 } else {
-                    Toast.makeText(this, "No se encontró el documento de stock", Toast.LENGTH_SHORT).show()
-                    updateButton.isEnabled = true
+                    // No hay documento, lo creamos con un ID generado automáticamente
+                    val newStock = hashMapOf("cant_stock" to newQuantity)
+                    stockCollection.add(newStock)
+                        .addOnSuccessListener {
+                            Toast.makeText(this, "Stock creado y actualizado correctamente", Toast.LENGTH_SHORT).show()
+                            currentStock.text = "Stock: $newQuantity unidades"
+                            quantityInput.text.clear()
+                            updateButton.isEnabled = true
+                        }
+                        .addOnFailureListener { e ->
+                            Toast.makeText(this, "Error al crear stock: ${e.message}", Toast.LENGTH_SHORT).show()
+                            updateButton.isEnabled = true
+                        }
                 }
             }
             .addOnFailureListener { e ->
@@ -141,5 +149,4 @@ class StockActivity : AppCompatActivity() {
                 updateButton.isEnabled = true
             }
     }
-
 }
