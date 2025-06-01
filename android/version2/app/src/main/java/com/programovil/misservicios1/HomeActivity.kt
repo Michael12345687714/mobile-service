@@ -304,7 +304,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             .document(proveedorId)
             .collection("orders")
             //.whereEqualTo("estado", "pendiente")
-            .whereIn("estado", listOf("pendiente", "finalizar"))
+            .whereIn("estado", listOf("pendiente", "aceptado"))
             .get()
             .addOnSuccessListener { documents ->
 
@@ -452,7 +452,8 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         contenedorNotificaciones.removeAllViews()
 
         for (notificacion in notificacionesList) {
-            val notificacionView = if (notificacion.estado == "finalizar") {
+           // val notificacionView = if (notificacion.estado == "finalizar") {
+            val notificacionView = if (notificacion.estado == "aceptado") {
                 // Si el estado es aceptado, usar la vista con botón "Finalizar"
                 crearVistaNotificacionFinalizar(notificacion)
             } else {
@@ -812,13 +813,14 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+
+
     private fun actualizarEstadoNotificacion(notificacionId: String, nuevoEstado: String) {
         if (nuevoEstado == "aceptado") {
             verificarStockAntesDeAceptar(notificacionId)
             return
         }
 
-        // Para rechazos y otros estados
         val currentUser = auth.currentUser
         if (currentUser == null) {
             Toast.makeText(this, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
@@ -826,60 +828,90 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         }
 
         val proveedorId = currentUser.uid
+        val ordenRefProveedor = db.collection("userServices")
+            .document(proveedorId)
+            .collection("orders")
+            .document(notificacionId)
 
-        // Mostrar diálogo de progreso
         val progressDialog = ProgressDialog(this).apply {
             setMessage("Actualizando estado...")
             setCancelable(false)
             show()
         }
 
-        db.collection("userServices")
-            .document(proveedorId)
-            .collection("orders")
-            .document(notificacionId)
-            .update("estado", nuevoEstado)
-            .addOnSuccessListener {
+        // Primero actualizamos el estado en userServices y luego buscamos clienteId
+        ordenRefProveedor.get().addOnSuccessListener { documento ->
+            if (!documento.exists()) {
                 progressDialog.dismiss()
+                Toast.makeText(this, "Pedido no encontrado", Toast.LENGTH_SHORT).show()
+                return@addOnSuccessListener
+            }
 
-                // Encontrar y actualizar la notificación en la lista
-                val index = notificacionesList.indexOfFirst { it.id == notificacionId }
-                if (index != -1) {
-                    val notificacion = notificacionesList[index]
+            val clienteId = documento.getString("clienteId")
+            if (clienteId.isNullOrEmpty()) {
+                progressDialog.dismiss()
+                Toast.makeText(this, "Cliente no especificado en la orden", Toast.LENGTH_SHORT).show()
+                return@addOnSuccessListener
+            }
 
-                    // Actualizar el estado en la lista local
-                    notificacionesList[index] = notificacion.copy(estado = nuevoEstado)
+            // Creamos una batch para hacer ambas actualizaciones juntas
+            val batch = db.batch()
 
-                    // Si el nuevo estado es "finalizar", actualizar la vista específicamente
-                    if (nuevoEstado == "finalizar") {
-                        // Reemplazar la vista existente con la nueva vista de "finalizar"
-                        contenedorNotificaciones.removeViewAt(index)
-                        val nuevaVista = crearVistaNotificacionFinalizar(notificacionesList[index])
-                        contenedorNotificaciones.addView(nuevaVista, index)
+            // Update en userServices
+            batch.update(ordenRefProveedor, "estado", nuevoEstado)
 
-                        // Mostrar mensaje de confirmación
-                        Toast.makeText(this, "Pedido marcado para finalizar", Toast.LENGTH_SHORT).show()
-                    } else {
-                        // Para otros estados, recargar todas las notificaciones
-                        cargarNotificaciones()
+            // Update en userClients
+            val ordenRefCliente = db.collection("userClients")
+                .document(clienteId)
+                .collection("orders")
+                .document(notificacionId)
+            batch.update(ordenRefCliente, "estado", nuevoEstado)
+
+            // Commit del batch
+            batch.commit()
+                .addOnSuccessListener {
+                    progressDialog.dismiss()
+
+                    // Actualizamos la lista local
+                    val index = notificacionesList.indexOfFirst { it.id == notificacionId }
+                    if (index != -1) {
+                        val notificacion = notificacionesList[index]
+                        notificacionesList[index] = notificacion.copy(estado = nuevoEstado)
+
+                        if (nuevoEstado == "finalizar") {
+                            contenedorNotificaciones.removeViewAt(index)
+                            val nuevaVista = crearVistaNotificacionFinalizar(notificacionesList[index])
+                            contenedorNotificaciones.addView(nuevaVista, index)
+                            Toast.makeText(this, "Pedido marcado para finalizar", Toast.LENGTH_SHORT).show()
+                        } else {
+                            cargarNotificaciones()
+                        }
                     }
+
+                    val mensaje = when (nuevoEstado) {
+                        "aceptado" -> "Pedido aceptado correctamente"
+                        "rechazado" -> "Pedido rechazado"
+                        "finalizado" -> "Pedido finalizado correctamente"
+                        else -> "Estado actualizado"
+                    }
+
+                    Toast.makeText(this, mensaje, Toast.LENGTH_SHORT).show()
+                }
+                .addOnFailureListener { e ->
+                    progressDialog.dismiss()
+                    Toast.makeText(this, "Error al actualizar estado: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
 
-                // Mostrar mensaje según el estado
-                val mensaje = when (nuevoEstado) {
-                    "aceptado" -> "Pedido aceptado correctamente"
-                    "rechazado" -> "Pedido rechazado"
-                    "finalizado" -> "Pedido finalizado correctamente"
-                    else -> "Estado actualizado"
-                }
-
-                Toast.makeText(this, mensaje, Toast.LENGTH_SHORT).show()
-            }
-            .addOnFailureListener { e ->
-                progressDialog.dismiss()
-                Toast.makeText(this, "Error al actualizar estado: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
+        }.addOnFailureListener { e ->
+            progressDialog.dismiss()
+            Toast.makeText(this, "Error al obtener orden: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
+
+
+
+
+
 
     // Verificar stock antes de aceptar definitivamente
     private fun verificarStockAntesDeAceptar(notificacionId: String) {
@@ -1031,7 +1063,8 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                             .document(stockDocId)
 
                         // Actualizar estado en ambas colecciones de orders
-                        batch.update(userServiceRef, "estado", "finalizar")
+                        //batch.update(userServiceRef, "estado", "finalizar")
+                        batch.update(userServiceRef, "estado", nuevoEstado)
                         batch.update(userClientRef, "estado", nuevoEstado)
 
                         // Actualizar stock
