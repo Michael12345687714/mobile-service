@@ -82,7 +82,7 @@ class MainActivity : AppCompatActivity() {
                         finish()
                     }
                     .addOnFailureListener {
-                        val toast = Toast.makeText(this, "Error al iniciar sesión: ${it.message}", Toast.LENGTH_SHORT)
+                        val toast = Toast.makeText(this, "Error al iniciar sesión: Correo o contraseña incorrectos", Toast.LENGTH_SHORT)
                         val icon = ContextCompat.getDrawable(this, R.drawable.imagen2) // imagen2 para error
                         val textView = toast.view?.findViewById<TextView>(android.R.id.message)
                         textView?.setCompoundDrawablesWithIntrinsicBounds(icon, null, null, null)

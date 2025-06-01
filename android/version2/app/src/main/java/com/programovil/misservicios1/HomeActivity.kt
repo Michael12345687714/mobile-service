@@ -89,20 +89,12 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     private var clienteMarker: Marker? = null
     private val allServiceMarkers = mutableListOf<Triple<Marker, String, String?>>() // Marker, username, serviceType
 
-
-
     private lateinit var notificacionesContainer: ConstraintLayout
     private lateinit var closeNotificacionesButton: TextView
-
-
 
     private lateinit var notificationButton: ImageButton
     private lateinit var contenedorNotificaciones: LinearLayout
     private val notificacionesList = mutableListOf<Notificacion>()
-
-
-
-
 
     // clase para manejar los datos de notificaciones
     data class Notificacion(
@@ -117,15 +109,11 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         var nombreCliente: String = ""
     )
 
-
-
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
         private const val USER_ICON_SIZE_DP = 50
         private const val PROVIDER_ICON_SIZE_DP = 40
     }
-
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -152,11 +140,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
-
-
-
     }
-
 
     private fun initViews() {
         waterServiceCard = findViewById(R.id.waterServiceCard)
@@ -286,17 +270,20 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         db.collection("userServices")
             .document(proveedorId)
             .collection("register_stock")
-            .get()
-            .addOnSuccessListener { documents ->
-                var stockTotal = 0
-                for (doc in documents) {
-                    val cantidad = doc.getLong("cant_stock")?.toInt() ?: 0
-                    stockTotal += cantidad
+            .addSnapshotListener { snapshots, error ->
+                if (error != null) {
+                    stockCounterText.text = "Error"
+                    return@addSnapshotListener
                 }
-                stockCounterText.text = stockTotal.toString()
-            }
-            .addOnFailureListener {
-                stockCounterText.text = "Error"
+
+                if (snapshots != null) {
+                    var stockTotal = 0
+                    for (doc in snapshots) {
+                        val cantidad = doc.getLong("cant_stock")?.toInt() ?: 0
+                        stockTotal += cantidad
+                    }
+                    stockCounterText.text = stockTotal.toString()
+                }
             }
     }
 
@@ -620,11 +607,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
 
-
-
-
-
-
     private fun mostrarRuta(destination: LatLng) {
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -830,77 +812,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
-
-
-
-
-//    private fun actualizarEstadoNotificacion(notificacionId: String, nuevoEstado: String) {
-//        if (nuevoEstado == "aceptado") {
-//            verificarStockAntesDeAceptar(notificacionId)
-//            return
-//        }
-//
-//        // Para rechazos y otros estados
-//        val currentUser = auth.currentUser
-//        if (currentUser == null) {
-//            Toast.makeText(this, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
-//            return
-//        }
-//
-//        val proveedorId = currentUser.uid
-//
-//        // Usar la misma estructura que procesarActualizacionEstado
-//        db.collection("userServices")
-//            .document(proveedorId)
-//            .collection("orders")
-//            .document(notificacionId)
-//            .update("estado", nuevoEstado)
-//            .addOnSuccessListener {
-//                // Eliminar la notificación de la lista local
-//                val index = notificacionesList.indexOfFirst { it.id == notificacionId }
-//                if (index != -1) {
-//                    val notificacion = notificacionesList.removeAt(index)
-//
-//                    // Solo mostrar ruta si fue aceptado
-//                    if (nuevoEstado == "aceptado") {
-//                        notificacion.ubicacionCliente?.let { clientLocation ->
-//                            val clienteLatLng = LatLng(clientLocation["latitude"]!!, clientLocation["longitude"]!!)
-//                            mostrarRuta(clienteLatLng)
-//                        }
-//                    }
-//                }
-//
-//                // Cerrar la ventana de notificaciones
-//                notificacionesContainer.animate()
-//                    .alpha(0f)
-//                    .setDuration(300)
-//                    .withEndAction {
-//                        notificacionesContainer.visibility = View.GONE
-//                    }
-//                    .start()
-//
-//                // Mostrar mensaje de confirmación según el estado
-//                val mensaje = when (nuevoEstado) {
-//                    "aceptado" -> "Pedido aceptado correctamente"
-//                    "rechazado" -> "Pedido rechazado"
-//                    "finalizado" -> "Pedido finalizado correctamente"
-//                    else -> "Estado actualizado"
-//                }
-//
-//                Toast.makeText(this, mensaje, Toast.LENGTH_SHORT).show()
-//
-//                if (notificacionesList.isEmpty()) {
-//                    mostrarNoNotificaciones()
-//                } else {
-//                    mostrarNotificaciones()
-//                }
-//            }
-//            .addOnFailureListener { e ->
-//                Toast.makeText(this, "Error al actualizar estado: ${e.message}", Toast.LENGTH_SHORT).show()
-//            }
-//    }
-
-
     private fun actualizarEstadoNotificacion(notificacionId: String, nuevoEstado: String) {
         if (nuevoEstado == "aceptado") {
             verificarStockAntesDeAceptar(notificacionId)
@@ -969,11 +880,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                 Toast.makeText(this, "Error al actualizar estado: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
-
-
-
-
-
 
     // Verificar stock antes de aceptar definitivamente
     private fun verificarStockAntesDeAceptar(notificacionId: String) {
@@ -1080,11 +986,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                 ).show()
             }
     }
-
-
-
-
-
 
 
     private fun actualizarEstadoYStock(
@@ -1250,9 +1151,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             }
     }
 
-
-
-
     // Método para actualizar el contador visual de notificaciones
     private fun actualizarContadorNotificaciones(count: Int) {
         // Cambiar el color de la campana según si hay notificaciones o no
@@ -1266,8 +1164,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
     }
 
-
-// para actualizar las notificaciones cuando el usuario vuelve a la app
+    // para actualizar las notificaciones cuando el usuario vuelve a la app
     override fun onResume() {
         super.onResume()
 
@@ -1286,8 +1183,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
 
     }
-
-
 
     // Método para configurar la sección de servicios con animaciones
     private fun setupServicesSection() {
@@ -1394,7 +1289,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         gasServiceCard.cardElevation = 4f
         garbageServiceCard.cardElevation = 4f
     }
-
 
     // Método para buscar un proveedor de servicio por su username
     private fun searchServiceProvider(username: String) {
