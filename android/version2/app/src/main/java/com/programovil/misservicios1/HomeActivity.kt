@@ -60,7 +60,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import com.google.maps.android.PolyUtil
 import com.google.android.gms.maps.model.PolylineOptions
-
+import com.google.firebase.messaging.FirebaseMessaging
 
 private const val GOOGLE_MAPS_API_BASE_URL = "https://maps.googleapis.com/maps/api/"
 private lateinit var directionsApiService: DirectionsApiService
@@ -123,6 +123,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         db = FirebaseFirestore.getInstance()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
+        obtenerYGuardarTokenFCM()
 
         val retrofit = Retrofit.Builder()
             .baseUrl(GOOGLE_MAPS_API_BASE_URL)
@@ -141,6 +142,55 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
     }
+
+
+    // Método para obtener y guardar el token FCM
+    private fun obtenerYGuardarTokenFCM() {
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                return@addOnCompleteListener
+            }
+
+            // Obtener el token
+            val token = task.result
+
+            // Guardar el token en Firestore según el tipo de usuario
+            val currentUser = auth.currentUser
+            if (currentUser != null) {
+                guardarTokenEnFirestore(currentUser.uid, token)
+            }
+        }
+    }
+
+    private fun guardarTokenEnFirestore(userId: String, token: String) {
+        // Primero verificar si es cliente o servicio
+        db.collection("userClients").document(userId).get()
+            .addOnSuccessListener { clientDoc ->
+                if (clientDoc.exists()) {
+                    // Es un cliente
+                    db.collection("userClients").document(userId)
+                        .update("fcmToken", token)
+                        .addOnSuccessListener {
+                            println("Token FCM guardado para cliente")
+                        }
+                } else {
+                    // Verificar si es un servicio
+                    db.collection("userServices").document(userId).get()
+                        .addOnSuccessListener { serviceDoc ->
+                            if (serviceDoc.exists()) {
+                                // Es un servicio
+                                db.collection("userServices").document(userId)
+                                    .update("fcmToken", token)
+                                    .addOnSuccessListener {
+                                        println("Token FCM guardado para servicio")
+                                    }
+                            }
+                        }
+                }
+            }
+    }
+
+
 
     private fun initViews() {
         waterServiceCard = findViewById(R.id.waterServiceCard)

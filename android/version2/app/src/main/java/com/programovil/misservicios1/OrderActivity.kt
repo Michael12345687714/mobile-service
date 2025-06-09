@@ -8,6 +8,7 @@ import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.functions.FirebaseFunctions
 
 class OrderActivity : AppCompatActivity() {
 
@@ -22,10 +23,14 @@ class OrderActivity : AppCompatActivity() {
 
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
+    private lateinit var functions: FirebaseFunctions
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_order)
+
+        // Inicializar Firebase Functions
+        functions = FirebaseFunctions.getInstance()
 
         // Inicializamos vistas
         serviceImageView = findViewById(R.id.serviceImage)
@@ -132,16 +137,43 @@ class OrderActivity : AppCompatActivity() {
                     val clientOrdersRef = db.collection("userClients").document(clientUid).collection("orders")
                     val serviceOrdersRef = db.collection("userServices").document(serviceUid).collection("orders")
 
+                    // Guardar el pedido en ambas colecciones
                     clientOrdersRef.document(orderId).set(orderData)
                     serviceOrdersRef.document(orderId).set(orderData)
+                        .addOnSuccessListener {
+                            // Enviar notificación usando Cloud Function
+                            enviarNotificacionConCloudFunction(serviceUid, clientUid, quantity, note)
 
-
-                    Toast.makeText(this, "Pedido realizado exitosamente", Toast.LENGTH_SHORT).show()
-                    finish()
+                            Toast.makeText(this, "Pedido realizado exitosamente", Toast.LENGTH_SHORT).show()
+                            finish()
+                        }
+                        .addOnFailureListener {
+                            Toast.makeText(this, "Error al realizar el pedido", Toast.LENGTH_SHORT).show()
+                        }
                 }
                 .addOnFailureListener {
                     Toast.makeText(this, "Error al obtener ubicación del cliente", Toast.LENGTH_SHORT).show()
                 }
         }
+    }
+
+    private fun enviarNotificacionConCloudFunction(serviceUid: String, clientUid: String, cantidad: Int, nota: String) {
+        val data = hashMapOf(
+            "proveedorId" to serviceUid,
+            "clienteId" to clientUid,
+            "cantidad" to cantidad,
+            "nota" to nota
+        )
+
+        functions
+            .getHttpsCallable("sendOrderNotification")
+            .call(data)
+            .addOnSuccessListener { result ->
+                println("Notificación enviada exitosamente")
+            }
+            .addOnFailureListener { e ->
+                println("Error al enviar notificación: ${e.message}")
+                Toast.makeText(this, "Error al enviar notificación", Toast.LENGTH_SHORT).show()
+            }
     }
 }

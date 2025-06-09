@@ -16,8 +16,11 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import com.google.firebase.messaging.FirebaseMessaging
 import com.programovil.misservicios1.usersAccounts.CompleteProfileActivity
 import com.programovil.misservicios1.usersAccounts.RegisterActivity
+
+
 
 
 class MainActivity : AppCompatActivity() {
@@ -31,8 +34,8 @@ class MainActivity : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
 
-        // Verificar si ya hay un usuario autenticado
         if (auth.currentUser != null) {
+            setupFirebaseMessaging() // <- Obtener token si ya está logueado
             startActivity(Intent(this, HomeActivity::class.java))
             finish()
             return
@@ -46,16 +49,14 @@ class MainActivity : AppCompatActivity() {
         val registerButton = findViewById<Button>(R.id.btnRegister)
         val googleSignInButton = findViewById<com.google.android.gms.common.SignInButton>(R.id.googleSignInButton)
 
-        // Cambiar el texto del botón
         for (i in 0 until googleSignInButton.childCount) {
             val view = googleSignInButton.getChildAt(i)
-            if (view is android.widget.TextView) {
+            if (view is TextView) {
                 view.text = "Acceder con Google"
                 break
             }
         }
 
-        // Configurar Google Sign-In
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
@@ -63,7 +64,6 @@ class MainActivity : AppCompatActivity() {
 
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
-        // Inicio de sesión con email y contraseña
         loginButton.setOnClickListener {
             val email = emailField.text.toString().trim()
             val password = passwordField.text.toString().trim()
@@ -72,18 +72,20 @@ class MainActivity : AppCompatActivity() {
                 auth.signInWithEmailAndPassword(email, password)
                     .addOnSuccessListener {
                         val toast = Toast.makeText(this, "Inicio de sesión exitoso", Toast.LENGTH_SHORT)
-                        val icon = ContextCompat.getDrawable(this, R.drawable.imagen1) // imagen1 para éxito
+                        val icon = ContextCompat.getDrawable(this, R.drawable.imagen1)
                         val textView = toast.view?.findViewById<TextView>(android.R.id.message)
                         textView?.setCompoundDrawablesWithIntrinsicBounds(icon, null, null, null)
                         textView?.compoundDrawablePadding = 16
                         toast.show()
+
+                        setupFirebaseMessaging() // <- Obtener y guardar token
 
                         startActivity(Intent(this, HomeActivity::class.java))
                         finish()
                     }
                     .addOnFailureListener {
                         val toast = Toast.makeText(this, "Error al iniciar sesión: Correo o contraseña incorrectos", Toast.LENGTH_SHORT)
-                        val icon = ContextCompat.getDrawable(this, R.drawable.imagen2) // imagen2 para error
+                        val icon = ContextCompat.getDrawable(this, R.drawable.imagen2)
                         val textView = toast.view?.findViewById<TextView>(android.R.id.message)
                         textView?.setCompoundDrawablesWithIntrinsicBounds(icon, null, null, null)
                         textView?.compoundDrawablePadding = 16
@@ -91,7 +93,7 @@ class MainActivity : AppCompatActivity() {
                     }
             } else {
                 val toast = Toast.makeText(this, "Por favor, completa todos los campos", Toast.LENGTH_SHORT)
-                val icon = ContextCompat.getDrawable(this, R.drawable.imagen2) // imagen2 también para campos vacíos
+                val icon = ContextCompat.getDrawable(this, R.drawable.imagen2)
                 val textView = toast.view?.findViewById<TextView>(android.R.id.message)
                 textView?.setCompoundDrawablesWithIntrinsicBounds(icon, null, null, null)
                 textView?.compoundDrawablePadding = 16
@@ -99,12 +101,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Redirige al registro
         registerButton.setOnClickListener {
             startActivity(Intent(this, RegisterActivity::class.java))
         }
 
-        // Inicio de sesión con Google
         googleSignInButton.setOnClickListener {
             val signInIntent = googleSignInClient.signInIntent
             startActivityForResult(signInIntent, RC_SIGN_IN)
@@ -124,7 +124,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-//solucion
+
     private fun firebaseAuthWithGoogle(idToken: String) {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         auth.signInWithCredential(credential)
@@ -139,19 +139,18 @@ class MainActivity : AppCompatActivity() {
 
                     userClientsQuery.addOnSuccessListener { clients ->
                         if (!clients.isEmpty) {
-                            Log.d("AUTH", "Usuario encontrado en userClients. Redirigiendo a HomeActivity.")
                             Toast.makeText(this, "Sesión iniciada correctamente", Toast.LENGTH_SHORT).show()
+                            setupFirebaseMessaging() // <- Guardar token tras login
                             startActivity(Intent(this, HomeActivity::class.java))
                             finish()
                         } else {
                             userServicesQuery.addOnSuccessListener { services ->
                                 if (!services.isEmpty) {
-                                    Log.d("AUTH", "Usuario encontrado en userServices. Redirigiendo a HomeActivity.")
                                     Toast.makeText(this, "Sesión iniciada correctamente", Toast.LENGTH_SHORT).show()
+                                    setupFirebaseMessaging() // <- Guardar token tras login
                                     startActivity(Intent(this, HomeActivity::class.java))
                                     finish()
                                 } else {
-                                    Log.d("AUTH", "Correo no registrado. Redirigiendo a CompleteProfileActivity.")
                                     startActivity(Intent(this, CompleteProfileActivity::class.java))
                                     finish()
                                 }
@@ -165,6 +164,52 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     Toast.makeText(this, "Fallo en la autenticación con Google", Toast.LENGTH_SHORT).show()
                 }
+            }
+    }
+
+    // 🔐 FUNCIONES FCM
+
+    private fun setupFirebaseMessaging() {
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                Log.w("FCM", "Fetching FCM registration token failed", task.exception)
+                return@addOnCompleteListener
+            }
+
+            val token = task.result
+            Log.d("FCM", "FCM Registration Token: $token")
+
+            // Guardar en Firestore
+            val auth = FirebaseAuth.getInstance()
+            val db = FirebaseFirestore.getInstance()
+            val uid = auth.currentUser?.uid
+
+            if (uid != null) {
+                db.collection("userServices").document(uid)
+                    .update("fcmToken", token)
+                    .addOnSuccessListener {
+                        Log.d("FCM", "Token guardado exitosamente")
+                        Toast.makeText(this, "Token FCM guardado", Toast.LENGTH_SHORT).show()
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("FCM", "Error guardando token", e)
+                        // Si falla el update, intentar set
+                        val data = hashMapOf("fcmToken" to token)
+                        db.collection("userServices").document(uid).set(data, com.google.firebase.firestore.SetOptions.merge())
+                    }
+            }
+        }
+    }
+
+    private fun saveTokenToFirestore(token: String) {
+        val auth = FirebaseAuth.getInstance()
+        val db = FirebaseFirestore.getInstance()
+        val uid = auth.currentUser?.uid ?: return
+
+        db.collection("userServices").document(uid)
+            .update("fcmToken", token)
+            .addOnFailureListener {
+                Log.w("FCM", "No se pudo guardar el token FCM. ¿Quizá es cliente?", it)
             }
     }
 }
