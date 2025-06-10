@@ -60,13 +60,6 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import com.google.maps.android.PolyUtil
 import com.google.android.gms.maps.model.PolylineOptions
-import com.google.firebase.firestore.Query
-import com.google.firebase.Timestamp
-import android.text.InputType
-
-import com.google.firebase.firestore.FieldValue
-
-
 
 
 private const val GOOGLE_MAPS_API_BASE_URL = "https://maps.googleapis.com/maps/api/"
@@ -113,25 +106,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         val proveedorId: String = "",
         val timestamp: com.google.firebase.Timestamp? = null,
         val ubicacionCliente: Map<String, Double>? = null,
-        var nombreCliente: String = "",
-
-        var nombreProveedor: String = "",
-        var servicioTipo: String = "",
-
-
-        var orderId: String = "",
-
-        // Campos adicionales para mostrar información
-
-       // Nuevo campo
-        var tipoServicio: String = "",    // Nuevo campo
-
-
-        // Nuevos campos para el rechazo
-        val motivoRechazo: String? = null,
-        val fechaRechazo: Timestamp? = null
-
-
+        var nombreCliente: String = ""
     )
 
     companion object {
@@ -322,91 +297,33 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             return
         }
 
-        val userId = currentUser.uid
-        Log.d("NotificacionesDebug", "Usuario actual ID: $userId")
+        val proveedorId = currentUser.uid
 
-        // Primero verificar si es un userClient
-        db.collection("userClients")
-            .document(userId)
-            .get()
-            .addOnSuccessListener { clientDocument ->
-                if (clientDocument.exists()) {
-                    val userType = clientDocument.getString("userType") ?: ""
-                    Log.d("NotificacionesDebug", "Usuario encontrado en userClients - Tipo: $userType")
-
-                    if (userType == "Cliente") {
-                        Log.d("NotificacionesDebug", "Es un cliente, redirigiendo a cargarNotificacionesCliente()")
-                        // Ocultar el stockContainer si es cliente
-                        val stockContainer = findViewById<LinearLayout>(R.id.stockContainer)
-                        stockContainer?.visibility = View.GONE
-                        cargarNotificacionesCliente()
-                    } else {
-                        Log.w("NotificacionesDebug", "Usuario en userClients pero tipo no es 'Cliente': $userType")
-                        mostrarNoNotificaciones("Tipo de usuario no válido para ver notificaciones")
-                    }
-                } else {
-                    Log.d("NotificacionesDebug", "Usuario no encontrado en userClients, verificando userServices")
-
-                    // Si no está en userClients, verificar en userServices
-                    db.collection("userServices")
-                        .document(userId)
-                        .get()
-                        .addOnSuccessListener { serviceDocument ->
-                            if (serviceDocument.exists()) {
-                                val userType = serviceDocument.getString("userType") ?: ""
-                                Log.d("NotificacionesDebug", "Usuario encontrado en userServices - Tipo: $userType")
-
-                                if (userType == "Servicio") {
-                                    Log.d("NotificacionesDebug", "Es un proveedor de servicios, cargando notificaciones de pedidos")
-                                    cargarNotificacionesProveedor(userId)
-                                } else {
-                                    Log.w("NotificacionesDebug", "Usuario en userServices pero tipo no es 'Servicio': $userType")
-                                    mostrarNoNotificaciones("Tipo de usuario no válido para ver notificaciones")
-                                }
-                            } else {
-                                Log.e("NotificacionesDebug", "Usuario no encontrado ni en userClients ni en userServices")
-                                mostrarNoNotificaciones("Usuario no encontrado en el sistema")
-                            }
-                        }
-                        .addOnFailureListener { e ->
-                            Log.e("NotificacionesDebug", "Error al verificar userServices: ${e.message}")
-                            mostrarNoNotificaciones("Error al verificar tipo de usuario: ${e.message}")
-                        }
-                }
-            }
-            .addOnFailureListener { e ->
-                Log.e("NotificacionesDebug", "Error al verificar userClients: ${e.message}")
-                mostrarNoNotificaciones("Error al verificar tipo de usuario: ${e.message}")
-            }
-    }
-
-    private fun cargarNotificacionesProveedor(proveedorId: String) {
-        Log.d("NotificacionesDebug", "Iniciando carga de notificaciones para proveedor: $proveedorId")
 
         db.collection("userServices")
             .document(proveedorId)
             .collection("orders")
+            //.whereEqualTo("estado", "pendiente")
             .whereIn("estado", listOf("pendiente", "aceptado"))
             .get()
             .addOnSuccessListener { documents ->
+
                 Log.d("FirestoreDebug", "Pedidos pendientes encontrados: ${documents.size()}")
 
                 // Limpiar lista anterior
                 notificacionesList.clear()
 
                 if (documents.isEmpty) {
-                    Log.d("NotificacionesDebug", "No hay pedidos pendientes")
+                    // No hay notificaciones
                     mostrarNoNotificaciones("No hay pedidos pendientes en este momento")
                 } else {
-                    Log.d("NotificacionesDebug", "Procesando ${documents.size()} notificaciones")
-
                     // Procesar cada notificación y obtener datos adicionales necesarios
                     var notificacionesProcesadas = 0
                     val totalNotificaciones = documents.size()
 
                     for (document in documents) {
                         val notificacion = document.toObject(Notificacion::class.java).copy(id = document.id)
-                        Log.d("NotificacionesDebug", "Procesando notificación ID: ${document.id}, Cliente ID: ${notificacion.clienteId}")
+
 
                         db.collection("userClients")
                             .document(notificacion.clienteId)
@@ -414,32 +331,31 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                             .addOnSuccessListener { clientDocument ->
                                 if (clientDocument.exists()) {
                                     notificacion.nombreCliente = clientDocument.getString("username") ?: "Cliente"
-                                    Log.d("NotificacionesDebug", "Cliente encontrado: ${notificacion.nombreCliente}")
                                 } else {
                                     notificacion.nombreCliente = "Cliente #${notificacion.clienteId.take(5)}"
-                                    Log.w("NotificacionesDebug", "Cliente no encontrado, usando nombre genérico: ${notificacion.nombreCliente}")
                                 }
 
+
                                 notificacionesList.add(notificacion)
+
+
                                 notificacionesProcesadas++
 
-                                Log.d("NotificacionesDebug", "Notificaciones procesadas: $notificacionesProcesadas de $totalNotificaciones")
 
                                 if (notificacionesProcesadas == totalNotificaciones) {
-                                    Log.d("NotificacionesDebug", "Todas las notificaciones procesadas, ordenando y mostrando")
+
                                     notificacionesList.sortByDescending { it.timestamp }
                                     mostrarNotificaciones()
                                 }
                             }
                             .addOnFailureListener { e ->
-                                Log.e("NotificacionesDebug", "Error al obtener datos del cliente ${notificacion.clienteId}: ${e.message}")
 
                                 notificacion.nombreCliente = "Cliente #${notificacion.clienteId.take(5)}"
                                 notificacionesList.add(notificacion)
                                 notificacionesProcesadas++
 
                                 if (notificacionesProcesadas == totalNotificaciones) {
-                                    Log.d("NotificacionesDebug", "Todas las notificaciones procesadas (con algunos errores), ordenando y mostrando")
+                                    // Ordenar por timestamp para mostrar las más recientes primero
                                     notificacionesList.sortByDescending { it.timestamp }
                                     mostrarNotificaciones()
                                 }
@@ -448,7 +364,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                 }
             }
             .addOnFailureListener { e ->
-                Log.e("NotificacionesDebug", "Error al cargar pedidos del proveedor: ${e.message}")
+                // Error al cargar notificaciones
                 mostrarNoNotificaciones("Error al cargar pedidos: ${e.message}")
             }
     }
@@ -692,282 +608,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
 
-    //client
-
-    private fun cargarNotificacionesCliente() {
-        Log.d("NotificacionesDebug", "Iniciando carga de notificaciones para cliente")
-
-        val currentUser = auth.currentUser
-        if (currentUser == null) {
-            mostrarNoNotificaciones("Debe iniciar sesión para ver notificaciones")
-            return
-        }
-
-        val clienteId = currentUser.uid
-        Log.d("NotificacionesDebug", "Cliente ID: $clienteId")
-
-        // Buscar pedidos del cliente en la colección userClients
-        db.collection("userClients")
-            .document(clienteId)
-            .collection("orders")
-            .get()
-            .addOnSuccessListener { documents ->
-                Log.d("FirestoreDebug", "Pedidos del cliente encontrados: ${documents.size()}")
-
-                // Limpiar lista anterior
-                notificacionesList.clear()
-
-                if (documents.isEmpty) {
-                    Log.d("NotificacionesDebug", "No hay pedidos realizados")
-                    mostrarNoNotificaciones("No has realizado pedidos aún")
-                } else {
-                    Log.d("NotificacionesDebug", "Procesando ${documents.size()} pedidos")
-
-                    // Procesar cada pedido y obtener datos del proveedor
-                    var pedidosProcesados = 0
-                    val totalPedidos = documents.size()
-
-                    for (document in documents) {
-                        val notificacion = document.toObject(Notificacion::class.java).copy(id = document.id)
-                        Log.d("NotificacionesDebug", "Procesando pedido ID: ${document.id}, Proveedor ID: ${notificacion.proveedorId}")
-
-                        // Obtener datos del proveedor desde userServices
-                        db.collection("userServices")
-                            .document(notificacion.proveedorId)
-                            .get()
-                            .addOnSuccessListener { proveedorDocument ->
-                                if (proveedorDocument.exists()) {
-                                    // Extraer username y serviceType del proveedor
-                                    notificacion.nombreProveedor = proveedorDocument.getString("username") ?: "Proveedor"
-                                    notificacion.tipoServicio = proveedorDocument.getString("serviceType") ?: "Servicio"
-                                    Log.d("NotificacionesDebug", "Proveedor encontrado: ${notificacion.nombreProveedor}, Tipo: ${notificacion.tipoServicio}")
-                                } else {
-                                    notificacion.nombreProveedor = "Proveedor #${notificacion.proveedorId.take(5)}"
-                                    notificacion.tipoServicio = "Servicio"
-                                    Log.w("NotificacionesDebug", "Proveedor no encontrado, usando nombre genérico: ${notificacion.nombreProveedor}")
-                                }
-
-                                notificacionesList.add(notificacion)
-                                pedidosProcesados++
-
-                                Log.d("NotificacionesDebug", "Pedidos procesados: $pedidosProcesados de $totalPedidos")
-
-                                if (pedidosProcesados == totalPedidos) {
-                                    Log.d("NotificacionesDebug", "Todos los pedidos procesados, ordenando y mostrando")
-                                    notificacionesList.sortByDescending { it.timestamp }
-                                    mostrarNotificacionesCliente()
-                                }
-                            }
-                            .addOnFailureListener { e ->
-                                Log.e("NotificacionesDebug", "Error al obtener datos del proveedor ${notificacion.proveedorId}: ${e.message}")
-
-                                notificacion.nombreProveedor = "Proveedor #${notificacion.proveedorId.take(5)}"
-                                notificacion.tipoServicio = "Servicio"
-                                notificacionesList.add(notificacion)
-                                pedidosProcesados++
-
-                                if (pedidosProcesados == totalPedidos) {
-                                    Log.d("NotificacionesDebug", "Todos los pedidos procesados (con algunos errores), ordenando y mostrando")
-                                    notificacionesList.sortByDescending { it.timestamp }
-                                    mostrarNotificacionesCliente()
-                                }
-                            }
-                    }
-                }
-            }
-            .addOnFailureListener { e ->
-                Log.e("NotificacionesDebug", "Error al cargar pedidos del cliente: ${e.message}")
-                mostrarNoNotificaciones("Error al cargar pedidos: ${e.message}")
-            }
-    }
-
-    // Función para mostrar las notificaciones específicas del cliente
-    private fun mostrarNotificacionesCliente() {
-        // Limpiar el contenedor
-        contenedorNotificaciones.removeAllViews()
-
-        for (notificacion in notificacionesList) {
-            val notificacionView = crearVistaNotificacionCliente(notificacion)
-            contenedorNotificaciones.addView(notificacionView)
-        }
-
-        // Agregar una vista espaciadora al final
-        val espaciador = View(this)
-        val layoutParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            (170 * resources.displayMetrics.density).toInt() // 170dp en pixels
-        )
-        espaciador.layoutParams = layoutParams
-        contenedorNotificaciones.addView(espaciador)
-
-        // Hacer visible el contenedor
-        notificacionesContainer.alpha = 0f
-        notificacionesContainer.visibility = View.VISIBLE
-        notificacionesContainer.animate()
-            .alpha(1f)
-            .setDuration(300)
-            .start()
-
-        actualizarContadorNotificaciones(notificacionesList.size)
-    }
-
-    // Función para crear la vista específica de notificación para cliente
-    // Función para crear la vista específica de notificación para cliente
-    private fun crearVistaNotificacionCliente(notificacion: Notificacion): View {
-        // Inflar la vista desde el layout
-        val notificacionView = LayoutInflater.from(this).inflate(
-            R.layout.item_notificacion_cliente, contenedorNotificaciones, false
-        )
-
-        // Obtener referencias a las vistas
-        val cardView = notificacionView.findViewById<androidx.cardview.widget.CardView>(R.id.card_notificacion_cliente)
-        val tituloPedido = notificacionView.findViewById<TextView>(R.id.titulo_pedido_cliente)
-        val nombreProveedor = notificacionView.findViewById<TextView>(R.id.nombre_proveedor)
-        val tipoServicio = notificacionView.findViewById<TextView>(R.id.tipo_servicio)
-        val cantidadPedido = notificacionView.findViewById<TextView>(R.id.cantidad_pedido_cliente)
-        val estadoPedido = notificacionView.findViewById<TextView>(R.id.estado_pedido)
-        val notaPedido = notificacionView.findViewById<TextView>(R.id.nota_pedido_cliente)
-        val fechaPedido = notificacionView.findViewById<TextView>(R.id.fecha_pedido_cliente)
-        val motivoRechazo = notificacionView.findViewById<TextView>(R.id.motivo_rechazo_cliente)
-        val btnEliminar = notificacionView.findViewById<ImageButton>(R.id.btn_eliminar_notificacion)
-
-        // Configurar los datos
-        tituloPedido.text = "📦 Pedido # ${notificacion.id.take(8)}"
-        nombreProveedor.text = "Proveedor: ${notificacion.nombreProveedor}"
-        tipoServicio.text = "Servicio: ${notificacion.tipoServicio}"
-        cantidadPedido.text = "Cantidad: ${notificacion.cantidad}"
-        estadoPedido.text = "Estado: ${notificacion.estado}"
-        notaPedido.text = "Nota: ${notificacion.nota}"
-
-        // Formatear fecha y hora
-        val fechaHora = if (notificacion.timestamp != null) {
-            val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-            dateFormat.format(notificacion.timestamp.toDate())
-        } else {
-            "Fecha no disponible"
-        }
-        fechaPedido.text = "Fecha: $fechaHora"
-
-        // Configurar color del estado y mostrar motivo de rechazo si corresponde
-        when (notificacion.estado) {
-            "pendiente" -> {
-                estadoPedido.setTextColor(ContextCompat.getColor(this, android.R.color.holo_orange_dark))
-                motivoRechazo.visibility = View.GONE
-            }
-            "aceptado" -> {
-                estadoPedido.setTextColor(ContextCompat.getColor(this, android.R.color.holo_blue_dark))
-                motivoRechazo.visibility = View.GONE
-            }
-            "finalizado" -> {
-                estadoPedido.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
-                motivoRechazo.visibility = View.GONE
-            }
-            "rechazado" -> {
-                estadoPedido.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
-
-                // Mostrar motivo de rechazo si existe
-                if (!notificacion.motivoRechazo.isNullOrEmpty()) {
-                    motivoRechazo.text = "❌ Motivo de rechazo: ${notificacion.motivoRechazo}"
-                    motivoRechazo.visibility = View.VISIBLE
-                } else {
-                    motivoRechazo.text = "❌ Motivo de rechazo: No especificado"
-                    motivoRechazo.visibility = View.VISIBLE
-                }
-            }
-            else -> {
-                motivoRechazo.visibility = View.GONE
-            }
-        }
-
-        // Configurar el botón de eliminar
-        btnEliminar.setOnClickListener {
-            mostrarDialogoConfirmacionEliminar(notificacion, notificacionView)
-        }
-
-        return notificacionView
-    }
-
-    // Función para mostrar diálogo de confirmación antes de eliminar
-    private fun mostrarDialogoConfirmacionEliminar(notificacion: Notificacion, notificacionView: View) {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("Eliminar notificación")
-        builder.setMessage("¿Estás seguro de que deseas eliminar esta notificación? Esta acción no se puede deshacer.")
-
-        builder.setPositiveButton("Eliminar") { _, _ ->
-            eliminarNotificacion(notificacion, notificacionView)
-        }
-
-        builder.setNegativeButton("Cancelar") { dialog, _ ->
-            dialog.dismiss()
-        }
-
-        builder.show()
-    }
-
-    // Función para eliminar la notificación de Firebase
-    private fun eliminarNotificacion(notificacion: Notificacion, notificacionView: View) {
-        val currentUser = auth.currentUser
-        if (currentUser == null) {
-            Toast.makeText(this, "Error: Usuario no autenticado", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val clienteId = currentUser.uid
-
-        // Mostrar progress mientras se elimina
-        val progressDialog = ProgressDialog(this)
-        progressDialog.setMessage("Eliminando notificación...")
-        progressDialog.show()
-
-        // Eliminar de Firebase
-        db.collection("userClients")
-            .document(clienteId)
-            .collection("orders")
-            .document(notificacion.id)
-            .delete()
-            .addOnSuccessListener {
-                Log.d("NotificacionesDebug", "Notificación eliminada exitosamente: ${notificacion.id}")
-
-                // Eliminar de la lista local
-                val index = notificacionesList.indexOfFirst { it.id == notificacion.id }
-                if (index != -1) {
-                    notificacionesList.removeAt(index)
-                }
-
-                // Animar la eliminación de la vista
-                notificacionView.animate()
-                    .alpha(0f)
-                    .scaleX(0f)
-                    .scaleY(0f)
-                    .setDuration(300)
-                    .withEndAction {
-                        // Remover la vista del contenedor
-                        contenedorNotificaciones.removeView(notificacionView)
-
-                        // Actualizar el contador
-                        actualizarContadorNotificaciones(notificacionesList.size)
-
-                        // Si no quedan notificaciones, mostrar mensaje
-                        if (notificacionesList.isEmpty()) {
-                            mostrarNoNotificaciones("No tienes notificaciones")
-                        }
-                    }
-                    .start()
-
-                progressDialog.dismiss()
-                Toast.makeText(this, "Notificación eliminada", Toast.LENGTH_SHORT).show()
-            }
-            .addOnFailureListener { e ->
-                Log.e("NotificacionesDebug", "Error al eliminar notificación: ${e.message}")
-                progressDialog.dismiss()
-                Toast.makeText(this, "Error al eliminar: ${e.message}", Toast.LENGTH_LONG).show()
-            }
-    }
-
-
-    //
-
-
     private fun mostrarRuta(destination: LatLng) {
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -1173,104 +813,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
-//
-//
-//    private fun actualizarEstadoNotificacion(notificacionId: String, nuevoEstado: String) {
-//        if (nuevoEstado == "aceptado") {
-//            verificarStockAntesDeAceptar(notificacionId)
-//            return
-//        }
-//
-//        val currentUser = auth.currentUser
-//        if (currentUser == null) {
-//            Toast.makeText(this, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
-//            return
-//        }
-//
-//        val proveedorId = currentUser.uid
-//        val ordenRefProveedor = db.collection("userServices")
-//            .document(proveedorId)
-//            .collection("orders")
-//            .document(notificacionId)
-//
-//        val progressDialog = ProgressDialog(this).apply {
-//            setMessage("Actualizando estado...")
-//            setCancelable(false)
-//            show()
-//        }
-//
-//        // Primero actualizamos el estado en userServices y luego buscamos clienteId
-//        ordenRefProveedor.get().addOnSuccessListener { documento ->
-//            if (!documento.exists()) {
-//                progressDialog.dismiss()
-//                Toast.makeText(this, "Pedido no encontrado", Toast.LENGTH_SHORT).show()
-//                return@addOnSuccessListener
-//            }
-//
-//            val clienteId = documento.getString("clienteId")
-//            if (clienteId.isNullOrEmpty()) {
-//                progressDialog.dismiss()
-//                Toast.makeText(this, "Cliente no especificado en la orden", Toast.LENGTH_SHORT).show()
-//                return@addOnSuccessListener
-//            }
-//
-//            // Creamos una batch para hacer ambas actualizaciones juntas
-//            val batch = db.batch()
-//
-//            // Update en userServices
-//            batch.update(ordenRefProveedor, "estado", nuevoEstado)
-//
-//            // Update en userClients
-//            val ordenRefCliente = db.collection("userClients")
-//                .document(clienteId)
-//                .collection("orders")
-//                .document(notificacionId)
-//            batch.update(ordenRefCliente, "estado", nuevoEstado)
-//
-//            // Commit del batch
-//            batch.commit()
-//                .addOnSuccessListener {
-//                    progressDialog.dismiss()
-//
-//                    // Actualizamos la lista local
-//                    val index = notificacionesList.indexOfFirst { it.id == notificacionId }
-//                    if (index != -1) {
-//                        val notificacion = notificacionesList[index]
-//                        notificacionesList[index] = notificacion.copy(estado = nuevoEstado)
-//
-//                        if (nuevoEstado == "finalizar") {
-//                            contenedorNotificaciones.removeViewAt(index)
-//                            val nuevaVista = crearVistaNotificacionFinalizar(notificacionesList[index])
-//                            contenedorNotificaciones.addView(nuevaVista, index)
-//                            Toast.makeText(this, "Pedido marcado para finalizar", Toast.LENGTH_SHORT).show()
-//                        } else {
-//                            cargarNotificaciones()
-//                        }
-//                    }
-//
-//                    val mensaje = when (nuevoEstado) {
-//                        "aceptado" -> "Pedido aceptado correctamente"
-//                        "rechazado" -> "Pedido rechazado"
-//                        "finalizado" -> "Pedido finalizado correctamente"
-//                        else -> "Estado actualizado"
-//                    }
-//
-//                    Toast.makeText(this, mensaje, Toast.LENGTH_SHORT).show()
-//                }
-//                .addOnFailureListener { e ->
-//                    progressDialog.dismiss()
-//                    Toast.makeText(this, "Error al actualizar estado: ${e.message}", Toast.LENGTH_SHORT).show()
-//                }
-//
-//        }.addOnFailureListener { e ->
-//            progressDialog.dismiss()
-//            Toast.makeText(this, "Error al obtener orden: ${e.message}", Toast.LENGTH_SHORT).show()
-//        }
-//    }
-
-
-    //motivo de rechaso
-
 
 
     private fun actualizarEstadoNotificacion(notificacionId: String, nuevoEstado: String) {
@@ -1279,56 +821,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             return
         }
 
-        // Si el estado es "rechazado", mostrar diálogo para ingresar motivo
-        if (nuevoEstado == "rechazado") {
-            mostrarDialogoMotivoRechazo(notificacionId)
-            return
-        }
-
-        // Para otros estados, continuar con el flujo normal
-        ejecutarActualizacionEstado(notificacionId, nuevoEstado, null)
-    }
-
-    private fun mostrarDialogoMotivoRechazo(notificacionId: String) {
-        val builder = AlertDialog.Builder(this)
-        val input = EditText(this)
-
-        // Configurar el EditText
-        input.hint = "Ingrese el motivo del rechazo"
-        input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-        input.maxLines = 3
-        input.setLines(2)
-
-        // Agregar padding al EditText
-        val padding = resources.getDimensionPixelSize(R.dimen.dialog_padding) // o usar 16.dpToPx()
-        input.setPadding(padding, padding, padding, padding)
-
-        builder.setTitle("Motivo del Rechazo")
-        builder.setMessage("Por favor, especifique el motivo por el cual está rechazando este pedido:")
-        builder.setView(input)
-
-        builder.setPositiveButton("Rechazar") { dialog, _ ->
-            val motivo = input.text.toString().trim()
-            if (motivo.isEmpty()) {
-                Toast.makeText(this, "Debe ingresar un motivo para rechazar", Toast.LENGTH_SHORT).show()
-            } else {
-                dialog.dismiss()
-                ejecutarActualizacionEstado(notificacionId, "rechazado", motivo)
-            }
-        }
-
-        builder.setNegativeButton("Cancelar") { dialog, _ ->
-            dialog.cancel()
-        }
-
-        val dialog = builder.create()
-        dialog.show()
-
-        // Opcional: Enfocar automáticamente el EditText
-        input.requestFocus()
-    }
-
-    private fun ejecutarActualizacionEstado(notificacionId: String, nuevoEstado: String, motivoRechazo: String?) {
         val currentUser = auth.currentUser
         if (currentUser == null) {
             Toast.makeText(this, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
@@ -1365,25 +857,15 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             // Creamos una batch para hacer ambas actualizaciones juntas
             val batch = db.batch()
 
-            // Preparar los datos a actualizar
-            val updateData = mutableMapOf<String, Any>()
-            updateData["estado"] = nuevoEstado
-
-            // Si hay motivo de rechazo, agregarlo a los datos
-            if (!motivoRechazo.isNullOrEmpty()) {
-                updateData["motivoRechazo"] = motivoRechazo
-                updateData["fechaRechazo"] = FieldValue.serverTimestamp()
-            }
-
             // Update en userServices
-            batch.update(ordenRefProveedor, updateData)
+            batch.update(ordenRefProveedor, "estado", nuevoEstado)
 
             // Update en userClients
             val ordenRefCliente = db.collection("userClients")
                 .document(clienteId)
                 .collection("orders")
                 .document(notificacionId)
-            batch.update(ordenRefCliente, updateData)
+            batch.update(ordenRefCliente, "estado", nuevoEstado)
 
             // Commit del batch
             batch.commit()
@@ -1394,10 +876,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                     val index = notificacionesList.indexOfFirst { it.id == notificacionId }
                     if (index != -1) {
                         val notificacion = notificacionesList[index]
-                        notificacionesList[index] = notificacion.copy(
-                            estado = nuevoEstado,
-                            motivoRechazo = motivoRechazo
-                        )
+                        notificacionesList[index] = notificacion.copy(estado = nuevoEstado)
 
                         if (nuevoEstado == "finalizar") {
                             contenedorNotificaciones.removeViewAt(index)
@@ -1411,7 +890,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
                     val mensaje = when (nuevoEstado) {
                         "aceptado" -> "Pedido aceptado correctamente"
-                        "rechazado" -> "Pedido rechazado correctamente"
+                        "rechazado" -> "Pedido rechazado"
                         "finalizado" -> "Pedido finalizado correctamente"
                         else -> "Estado actualizado"
                     }
@@ -1428,16 +907,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             Toast.makeText(this, "Error al obtener orden: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
-
-    // Función de extensión para convertir dp a pixels (si no la tienes)
-    private fun Int.dpToPx(): Int {
-        return (this * resources.displayMetrics.density).toInt()
-    }
-
-
-
-    //
-
 
 
 

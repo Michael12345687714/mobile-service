@@ -69,7 +69,7 @@ class ViewOrdersActivity : AppCompatActivity() {
     }
 
     private fun setupFilters() {
-        val estados = listOf("Todos", "pendiente", "aceptado", "finalizado")
+        val estados = listOf("Todos", "pendiente", "aceptado", "finalizado", "rechazado")
         statusSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, estados)
 
         statusSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
