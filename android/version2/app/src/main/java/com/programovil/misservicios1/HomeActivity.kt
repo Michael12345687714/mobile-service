@@ -118,49 +118,23 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_home)
-
-        // Inicializaciones Firebase
+        // Inicializaciones FIREBASE
         auth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        // Inicialización Retrofit para direcciones
+
         val retrofit = Retrofit.Builder()
             .baseUrl(GOOGLE_MAPS_API_BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
         directionsApiService = retrofit.create(DirectionsApiService::class.java)
 
-        // Referencias a views
-        val stockContainer = findViewById<LinearLayout>(R.id.stockContainer)
         val stockCounterText = findViewById<TextView>(R.id.stock_counter)
 
-        // Ocultar contenedor de stock por defecto
-        stockContainer.visibility = View.GONE
 
-        // Verificar tipo de usuario (Servicio o Cliente)
-        val currentUser = auth.currentUser
-        if (currentUser != null) {
-            val userId = currentUser.uid
+        cargarStockDisponible(stockCounterText)
 
-            // Buscar en userServices para determinar si es proveedor
-            db.collection("userServices").document(userId).get()
-                .addOnSuccessListener { document ->
-                    if (document.exists()) {
-                        // Es un proveedor → mostrar stock y cargar datos
-                        stockContainer.visibility = View.VISIBLE
-                        cargarStockDisponible(stockCounterText)
-                    } else {
-                        // No es proveedor → dejar oculto
-                        stockContainer.visibility = View.GONE
-                    }
-                }
-                .addOnFailureListener {
-                    stockContainer.visibility = View.GONE
-                }
-        }
-
-        // Resto de inicializaciones
         initViews()
         setupServicesSection()
 
@@ -312,6 +286,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                 }
             }
     }
+
 
     private fun cargarNotificaciones() {
         mostrarCargando()
@@ -468,6 +443,8 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             }
         }
     }
+
+
 
     // Función modificada que verifica el estado y llama a la función correspondiente
     private fun mostrarNotificaciones() {
@@ -630,6 +607,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         return notificacionView
     }
 
+
     private fun mostrarRuta(destination: LatLng) {
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -652,7 +630,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             }
         }
     }
-
     private fun drawRoute(origin: LatLng, destination: LatLng) {
         val originStr = "${origin.latitude},${origin.longitude}"
         val destinationStr = "${destination.latitude},${destination.longitude}"
@@ -727,6 +704,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     // Método para verificar stock y configurar la vista según disponibilidad
+
     private fun verificarStockYConfigurarVista(
         notificacion: Notificacion,
         cardView: androidx.cardview.widget.CardView,
@@ -804,6 +782,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     // Configurar vista normal cuando hay suficiente stock
+
     private fun configurarVistaNormal(
         cardView: androidx.cardview.widget.CardView,
         stockWarning: TextView,
@@ -833,6 +812,8 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             actualizarEstadoNotificacion(notificacion.id, "rechazado")
         }
     }
+
+
 
     private fun actualizarEstadoNotificacion(notificacionId: String, nuevoEstado: String) {
         if (nuevoEstado == "aceptado") {
@@ -927,6 +908,11 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+
+
+
+
+
     // Verificar stock antes de aceptar definitivamente
     private fun verificarStockAntesDeAceptar(notificacionId: String) {
         val notificacion = notificacionesList.find { it.id == notificacionId }
@@ -977,6 +963,8 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                 Toast.makeText(this, "Error al verificar stock: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
+
+
 
     private fun procesarActualizacionEstado(notificacionId: String, nuevoEstado: String) {
         val progressDialog = ProgressDialog(this)
@@ -1030,6 +1018,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
                 ).show()
             }
     }
+
 
     private fun actualizarEstadoYStock(
         proveedorId: String,
@@ -1301,6 +1290,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+
     private fun moveSelectionIndicator(cardView: CardView) {
         // Hacer visible el indicador
         selectionIndicator.visibility = View.VISIBLE
@@ -1386,6 +1376,7 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
             }
     }
 
+
     // Método para refrescar el mapa aplicando los filtros actuales
     private fun refreshMap() {
         // Eliminamos los marcadores pero mantenemos la configuración del mapa
@@ -1426,7 +1417,6 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
 
         checkLocationPermission()
     }
-
     private fun clearRoute() {
         mMap.clear()
         clienteMarker = null
@@ -1480,6 +1470,8 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+
+
     private fun enableMyLocation() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             == PackageManager.PERMISSION_GRANTED) {
@@ -1522,6 +1514,8 @@ class HomeActivity : AppCompatActivity(), OnMapReadyCallback {
         val drawerFragment = supportFragmentManager.findFragmentById(R.id.drawerFragmentContainer) as? UserDrawerFragment
         drawerFragment?.setStockButtonVisibility(isService)
     }
+
+
 
     // Esta es una función separada para iniciar la ubicación una vez que ya sabemos el tipo de usuario
     private fun iniciarActualizacionUbicacion() {

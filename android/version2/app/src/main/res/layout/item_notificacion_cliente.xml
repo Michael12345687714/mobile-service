@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/card_notificacion_cliente"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="4dp"
+    android:backgroundTint="@color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Header con título y botón eliminar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <!-- Título del pedido -->
+            <TextView
+                android:id="@+id/titulo_pedido_cliente"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="📦 Pedido #12345678"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/black" />
+
+            <!-- Botón eliminar -->
+            <ImageButton
+                android:id="@+id/btn_eliminar_notificacion"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:contentDescription="Eliminar notificación"
+                android:scaleType="centerInside"
+                android:tint="@android:color/darker_gray" />
+
+        </LinearLayout>
+
+        <!-- Información del proveedor -->
+        <TextView
+            android:id="@+id/nombre_proveedor"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Proveedor: Juan Pérez"
+            android:textSize="16sp"
+            android:textColor="@color/black"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tipo_servicio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Servicio: Agua Potable"
+            android:textSize="16sp"
+            android:textColor="@color/black"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Información del pedido -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="4dp">
+
+            <TextView
+                android:id="@+id/cantidad_pedido_cliente"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Cantidad: 5"
+                android:textSize="14sp"
+                android:textColor="@color/black" />
+
+            <TextView
+                android:id="@+id/estado_pedido"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Estado: Pendiente"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/holo_orange_dark" />
+
+        </LinearLayout>
+
+        <!-- Nota del pedido -->
+        <TextView
+            android:id="@+id/nota_pedido_cliente"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Nota: Entrega urgente"
+            android:textSize="14sp"
+            android:textColor="@color/black"
+            android:layout_marginBottom="4dp" />
+
+        <!-- Fecha del pedido -->
+        <TextView
+            android:id="@+id/fecha_pedido_cliente"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Fecha: 09/06/2025 14:30"
+            android:textSize="12sp"
+            android:textColor="@android:color/darker_gray"
+            android:layout_marginBottom="4dp" />
+
+        <!-- Motivo de rechazo (visible solo cuando está rechazado) -->
+        <TextView
+            android:id="@+id/motivo_rechazo_cliente"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Motivo de rechazo: No hay stock disponible"
+            android:textSize="12sp"
+            android:textColor="@android:color/holo_red_dark"
+            android:textStyle="italic"
+            android:background="@drawable/bg_motivo_rechazo"
+            android:padding="8dp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>
